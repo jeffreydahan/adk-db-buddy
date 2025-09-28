@@ -1,0 +1,8 @@
+ # For loading environment variables from .env file
+ python-dotenv
+ 
+ # Google Cloud client libraries
+ google-cloud-storage
+ google-cloud-aiplatform[rag]
+ google-cloud-discoveryengine
+ google-api-python-client

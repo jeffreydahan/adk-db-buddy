@@ -1,0 +1,14 @@
+.env
+.venv/
+cloud_sql_proxy
+
+# Log files
+proxy.log
+
+# Cloud SQL Proxy runtime directories
+cloudsql/
+emea-pe-agentspace:us-central1:postgres-instance01-jeffd/
+
+# Python cache
+__pycache__/
+*.pyc
