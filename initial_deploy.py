@@ -73,6 +73,30 @@ def wait_for_instance_to_be_runnable(service, project_id, instance_name):
             logger.error(f"An unexpected error occurred while waiting for instance: {e}")
             return False
 
+def wait_for_operation_to_complete(service, project_id, operation_name):
+    """Waits for a Cloud SQL operation to complete."""
+    logger.info(f"Waiting for operation '{operation_name}' to complete...")
+    while True:
+        try:
+            operation = service.operations().get(project=project_id, operation=operation_name).execute()
+            status = operation.get("status")
+            logger.info(f"Operation '{operation_name}' is currently in status: {status}")
+
+            if status == "DONE":
+                logger.info(f"Operation '{operation_name}' completed successfully.")
+                if "error" in operation:
+                    logger.error(f"Operation failed with error: {operation['error']}")
+                    return False
+                return True
+            
+            time.sleep(10) # Poll every 10 seconds
+        except HttpError as e:
+            logger.error(f"Error checking operation status: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while waiting for operation: {e}")
+            return False
+
 def create_postgres_instance_if_not_exists(project_id, instance_name, region):
     """Creates a PostgreSQL instance if it does not exist."""
     # Initialize the Cloud SQL Admin API client
@@ -81,6 +105,36 @@ def create_postgres_instance_if_not_exists(project_id, instance_name, region):
     try:
         instance = service.instances().get(project=project_id, instance=instance_name).execute()
         logger.info(f"Cloud SQL instance '{instance_name}' already exists in state: {instance.get('state')}")
+        
+        settings = instance.get("settings", {})
+        database_flags = settings.get("databaseFlags", [])
+        
+        iam_auth_flag_index = -1
+        for i, flag in enumerate(database_flags):
+            if flag.get("name") == "cloudsql.iam_authentication":
+                iam_auth_flag_index = i
+                break
+
+        needs_update = False
+        if iam_auth_flag_index != -1:
+            # Flag exists, check if it needs to be updated
+            if database_flags[iam_auth_flag_index].get("value") != "On":
+                database_flags[iam_auth_flag_index]["value"] = "On"
+                needs_update = True
+        else:
+            # Flag doesn't exist, add it
+            database_flags.append({"name": "cloudsql.iam_authentication", "value": "On"})
+            needs_update = True
+
+        if needs_update:
+            logger.info("Enabling IAM database authentication...")
+            settings["databaseFlags"] = database_flags
+            instance_body = {"settings": settings}
+            operation = service.instances().patch(project=project_id, instance=instance_name, body=instance_body).execute()
+            logger.info(f"Waiting for instance update to complete... Operation: {operation}")
+            if not wait_for_operation_to_complete(service, project_id, operation['name']):
+                return False
+
     except HttpError as e:
         if e.resp.status == 404:
             logger.info(f"Cloud SQL instance {instance_name} not found. Creating new instance.")
@@ -96,11 +150,19 @@ def create_postgres_instance_if_not_exists(project_id, instance_name, region):
                         "ipv4Enabled": True,
                         "requireSsl": True,
                     },
+                    "databaseFlags": [
+                        {
+                            "name": "cloudsql.iam_authentication",
+                            "value": "On"
+                        }
+                    ]
                 },
             }
             operation = service.instances().insert(project=project_id, body=instance_body).execute()
             logger.info(f"Waiting for Cloud SQL instance {instance_name} creation to complete...")
             logger.info(f"Operation for instance creation: {operation}")
+            if not wait_for_operation_to_complete(service, project_id, operation['name']):
+                return False
         else:
             logger.error(f"Error checking/creating Cloud SQL instance: {e}")
             raise
@@ -110,25 +172,7 @@ def create_postgres_instance_if_not_exists(project_id, instance_name, region):
     
     return wait_for_instance_to_be_runnable(service, project_id, instance_name)
 
-def set_postgres_password(project_id, instance_name, password):
-    """Sets the password for the 'postgres' user."""
-    logger.info(f"Setting password for 'postgres' user in instance '{instance_name}'...")
-    command = [
-        "gcloud",
-        "sql",
-        "users",
-        "set-password",
-        "postgres",
-        f"--instance={instance_name}",
-        f"--password={password}",
-        f"--project={project_id}",
-    ]
-    try:
-        subprocess.run(command, check=True, capture_output=True, text=True)
-        logger.info("Password for 'postgres' user set successfully.")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Error setting password for 'postgres' user: {e.stderr}")
-        raise
+
 
 def create_postgres_database_if_not_exists(project_id, instance_name, db_name):
     """Creates a PostgreSQL database within an instance if it does not exist."""
@@ -149,7 +193,7 @@ def create_postgres_database_if_not_exists(project_id, instance_name, db_name):
             operation = service.databases().insert(project=project_id, instance=instance_name, body=database_body).execute()
             logger.info(f"Waiting for database {db_name} creation to complete...")
             logger.info(f"Operation for database creation: {operation}")
-            logger.info(f"Database {db_name} creation initiated. Please check GCP console for status.")
+            wait_for_operation_to_complete(service, project_id, operation['name'])
         elif e.resp.status == 400 and "instance is not running" in str(e.content):
             logger.error(f"Cannot create database '{db_name}' because instance '{instance_name}' is not running. Please start the instance and try again.")
             raise
@@ -159,6 +203,69 @@ def create_postgres_database_if_not_exists(project_id, instance_name, db_name):
     except Exception as e:
         logger.error(f"An unexpected error occurred with database: {e}")
         raise
+
+def get_gcloud_user():
+    """Gets the currently logged in gcloud user."""
+    try:
+        command = [
+            "gcloud",
+            "auth",
+            "list",
+            "--filter=status:ACTIVE",
+            "--format=value(account)",
+        ]
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error getting gcloud user: {e.stderr}")
+        raise
+
+def add_iam_policy_binding(project_id, user_email):
+    """Adds the Cloud SQL Admin role to the user."""
+    logger.info(f"Adding Cloud SQL Admin role to {user_email}...")
+    command = [
+        "gcloud",
+        "projects",
+        "add-iam-policy-binding",
+        project_id,
+        f"--member=user:{user_email}",
+        "--role=roles/cloudsql.admin",
+    ]
+    try:
+        subprocess.run(command, check=True, capture_output=True, text=True)
+        logger.info("Cloud SQL Admin role added successfully.")
+    except subprocess.CalledProcessError as e:
+        # It's possible the policy binding already exists, which would cause an error.
+        # We can safely ignore this.
+        if "already exists" in e.stderr:
+            logger.info("IAM policy binding already exists.")
+        else:
+            logger.error(f"Error adding IAM policy binding: {e.stderr}")
+            raise
+
+def add_iam_user_to_instance(project_id, instance_name, user_email):
+    """Adds an IAM user to the Cloud SQL instance."""
+    logger.info(f"Adding IAM user {user_email} to instance {instance_name}...")
+    command = [
+        "gcloud",
+        "sql",
+        "users",
+        "create",
+        user_email,
+        f"--instance={instance_name}",
+        "--type=CLOUD_IAM_USER",
+        f"--project={project_id}",
+    ]
+    try:
+        subprocess.run(command, check=True, capture_output=True, text=True)
+        logger.info(f"IAM user {user_email} added successfully.")
+    except subprocess.CalledProcessError as e:
+        if "already exists" in e.stderr:
+            logger.info(f"IAM user {user_email} already exists.")
+        else:
+            logger.error(f"Error adding IAM user: {e.stderr}")
+            raise
+
 
 def create_RAG_corpus(rag_corpus_name):
     """Creates a RAG corpus if it does not already exist."""
@@ -249,6 +356,18 @@ def main():
         logger.error("Missing required environment variables. Please check your .env file.")
         return
 
+    gcloud_user = None
+    try:
+        gcloud_user = get_gcloud_user()
+    except Exception as e:
+        logger.error(f"Could not get gcloud user: {e}")
+
+    if gcloud_user:
+        try:
+            add_iam_policy_binding(project_id, gcloud_user)
+        except Exception as e:
+            logger.error(f"Could not add IAM policy binding: {e}")
+
     # GCS Bucket and Document Upload
     create_bucket_if_not_exists(project_id, gcs_bucket_name, gcs_location)
     upload_folder_contents(gcs_bucket_name, "documentation/postgres", gcs_bucket_postgres_folder)
@@ -258,9 +377,14 @@ def main():
     instance_ready = create_postgres_instance_if_not_exists(project_id, postgres_instance_name, postgres_region)
     
     if instance_ready:
+        if gcloud_user:
+            try:
+                add_iam_user_to_instance(project_id, postgres_instance_name, gcloud_user)
+            except Exception as e:
+                logger.error(f"Could not add IAM user to instance: {e}")
+
         logger.info("Creating PostgreSQL database...")
         create_postgres_database_if_not_exists(project_id, postgres_instance_name, postgres_db_name)
-        set_postgres_password(project_id, postgres_instance_name, os.getenv("GOOGLE_CLOUD_POSTGRES_PASSWORD"))
     else:
         logger.error(f"Could not proceed to database creation because instance '{postgres_instance_name}' is not ready.")
 

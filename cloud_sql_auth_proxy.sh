@@ -53,5 +53,5 @@ echo "Proxying connections for instance: $INSTANCE_CONNECTION_NAME"
 echo "This process will run in the foreground. Press Ctrl+C to stop it."
 echo "You can now run your Python script in another terminal."
 
-# 3. Run the proxy
-"$PROXY_EXECUTABLE" -instances="$INSTANCE_CONNECTION_NAME"=tcp:5432
+# 3. Run the proxy with IAM database authentication enabled
+"$PROXY_EXECUTABLE" -instances="$INSTANCE_CONNECTION_NAME"=tcp:5432 -enable_iam_login

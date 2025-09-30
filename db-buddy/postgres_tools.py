@@ -1,18 +1,46 @@
 import os
 import psycopg2
+import subprocess
 from google.adk.tools import FunctionTool
 from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_postgres_connection(dbname=None):
-    """Establishes a connection to the PostgreSQL database."""
+def get_gcloud_user():
+    """Gets the currently logged in gcloud user."""
     try:
+        command = [
+            "gcloud",
+            "auth",
+            "list",
+            "--filter=status:ACTIVE",
+            "--format=value(account)",
+        ]
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        raise Exception("Could not get gcloud user. Please ensure you are logged in to gcloud.") from e
+
+def get_access_token():
+    """Gets the access token for the currently logged in gcloud user."""
+    try:
+        command = ["gcloud", "auth", "print-access-token"]
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        raise Exception("Could not get access token. Please ensure you are logged in to gcloud.") from e
+
+def get_postgres_connection(dbname=None):
+    """Establishes a connection to the PostgreSQL database using IAM authentication."""
+    try:
+        iam_user = get_gcloud_user()
+        access_token = get_access_token()
+
         conn = psycopg2.connect(
             host='127.0.0.1',
             port=5432,
-            user='postgres',
-            password=os.getenv("GOOGLE_CLOUD_POSTGRES_PASSWORD"),
+            user=iam_user,
+            password=access_token,
             dbname=dbname if dbname else os.getenv("GOOGLE_CLOUD_POSTGRES_DB")
         )
         return conn
