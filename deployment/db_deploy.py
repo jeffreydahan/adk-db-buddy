@@ -12,6 +12,8 @@ from google.cloud import discoveryengine_v1beta as discoveryengine
 # Corrected import for SQL Admin API
 from googleapiclient import discovery
 from googleapiclient.errors import HttpError
+import argparse
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -97,8 +99,8 @@ def wait_for_operation_to_complete(service, project_id, operation_name):
             logger.error(f"An unexpected error occurred while waiting for operation: {e}")
             return False
 
-def create_postgres_instance_if_not_exists(project_id, instance_name, region):
-    """Creates a PostgreSQL instance if it does not exist."""
+def create_db_instance_if_not_exists(project_id, instance_name, region, db_type, db_version):
+    f"""Creates a {db_type} instance if it does not exist."""
     # Initialize the Cloud SQL Admin API client
     service = discovery.build("sqladmin", "v1beta4")
 
@@ -109,31 +111,32 @@ def create_postgres_instance_if_not_exists(project_id, instance_name, region):
         settings = instance.get("settings", {})
         database_flags = settings.get("databaseFlags", [])
         
-        iam_auth_flag_index = -1
-        for i, flag in enumerate(database_flags):
-            if flag.get("name") == "cloudsql.iam_authentication":
-                iam_auth_flag_index = i
-                break
+        if db_type != "sqlsvr":
+            iam_auth_flag_index = -1
+            for i, flag in enumerate(database_flags):
+                if flag.get("name") == "cloudsql.iam_authentication":
+                    iam_auth_flag_index = i
+                    break
 
-        needs_update = False
-        if iam_auth_flag_index != -1:
-            # Flag exists, check if it needs to be updated
-            if database_flags[iam_auth_flag_index].get("value") != "On":
-                database_flags[iam_auth_flag_index]["value"] = "On"
+            needs_update = False
+            if iam_auth_flag_index != -1:
+                # Flag exists, check if it needs to be updated
+                if database_flags[iam_auth_flag_index].get("value") != "On":
+                    database_flags[iam_auth_flag_index]["value"] = "On"
+                    needs_update = True
+            else:
+                # Flag doesn't exist, add it
+                database_flags.append({"name": "cloudsql.iam_authentication", "value": "On"})
                 needs_update = True
-        else:
-            # Flag doesn't exist, add it
-            database_flags.append({"name": "cloudsql.iam_authentication", "value": "On"})
-            needs_update = True
 
-        if needs_update:
-            logger.info("Enabling IAM database authentication...")
-            settings["databaseFlags"] = database_flags
-            instance_body = {"settings": settings}
-            operation = service.instances().patch(project=project_id, instance=instance_name, body=instance_body).execute()
-            logger.info(f"Waiting for instance update to complete... Operation: {operation}")
-            if not wait_for_operation_to_complete(service, project_id, operation['name']):
-                return False
+            if needs_update:
+                logger.info("Enabling IAM database authentication...")
+                settings["databaseFlags"] = database_flags
+                instance_body = {"settings": settings}
+                operation = service.instances().patch(project=project_id, instance=instance_name, body=instance_body).execute()
+                logger.info(f"Waiting for instance update to complete... Operation: {operation}")
+                if not wait_for_operation_to_complete(service, project_id, operation['name']):
+                    return False
 
     except HttpError as e:
         if e.resp.status == 404:
@@ -141,23 +144,38 @@ def create_postgres_instance_if_not_exists(project_id, instance_name, region):
             instance_body = {
                 "name": instance_name,
                 "project": project_id,
-                "databaseVersion": "POSTGRES_14",
+                "databaseVersion": db_version,
                 "region": region,
                 "settings": {
-                    "tier": "db-f1-micro",
                     "backupConfiguration": {"enabled": True},
                     "ipConfiguration": {
                         "ipv4Enabled": True,
                         "requireSsl": True,
                     },
-                    "databaseFlags": [
-                        {
-                            "name": "cloudsql.iam_authentication",
-                            "value": "On"
-                        }
-                    ]
                 },
             }
+
+            if db_type == "sqlsvr":
+                tier = os.getenv("GOOGLE_CLOUD_SQLSVR_INSTANCE_TIER")
+                password = os.getenv("GOOGLE_CLOUD_SQLSVR_PASSWORD")
+
+                if not all([tier, password]):
+                    logger.error("Missing GOOGLE_CLOUD_SQLSVR_INSTANCE_TIER or GOOGLE_CLOUD_SQLSVR_PASSWORD for sqlsvr.")
+                    return False
+
+                instance_body["settings"]["tier"] = tier
+                instance_body["rootPassword"] = password
+            if db_type == "postgres":
+                # Add databaseFlags only for non-sqlsvr types
+                instance_body["settings"]["databaseFlags"] = [
+                    {
+                        "name": "cloudsql.iam_authentication",
+                        "value": "On"
+                    }
+                ]
+                instance_body["settings"]["tier"] = "db-f1-micro"
+            print(instance_body)
+            print(instance_body)
             operation = service.instances().insert(project=project_id, body=instance_body).execute()
             logger.info(f"Waiting for Cloud SQL instance {instance_name} creation to complete...")
             logger.info(f"Operation for instance creation: {operation}")
@@ -174,26 +192,41 @@ def create_postgres_instance_if_not_exists(project_id, instance_name, region):
 
 
 
-def create_postgres_database_if_not_exists(project_id, instance_name, db_name):
-    """Creates a PostgreSQL database within an instance if it does not exist."""
+def create_database_if_not_exists(project_id, instance_name, db_name, db_type):
+    f"""Creates a {db_type} database within an instance if it does not exist."""
     # Initialize the Cloud SQL Admin API client
     service = discovery.build("sqladmin", "v1beta4")
 
     try:
         service.databases().get(project=project_id, instance=instance_name, database=db_name).execute()
         logger.info(f"Database {db_name} already exists in instance {instance_name}.")
+        return True
     except HttpError as e:
         if e.resp.status == 404:
             logger.info(f"Database {db_name} not found in instance {instance_name}. Creating new database.")
             database_body = {
                 "name": db_name,
-                "charset": "UTF8",
-                "collation": "en_US.UTF8",
             }
+            if db_type != "sqlsvr":
+                database_body["charset"] = "UTF8"
+                database_body["collation"] = "en_US.UTF8"
+            
             operation = service.databases().insert(project=project_id, instance=instance_name, body=database_body).execute()
             logger.info(f"Waiting for database {db_name} creation to complete...")
             logger.info(f"Operation for database creation: {operation}")
-            wait_for_operation_to_complete(service, project_id, operation['name'])
+            if not wait_for_operation_to_complete(service, project_id, operation['name']):
+                logger.error(f"Database creation operation for '{db_name}' failed.")
+                return False
+
+            # Validation step
+            try:
+                time.sleep(5) # Give a moment for the API to be consistent
+                service.databases().get(project=project_id, instance=instance_name, database=db_name).execute()
+                logger.info(f"Successfully validated that database '{db_name}' was created.")
+                return True
+            except HttpError as e_validate:
+                logger.error(f"Validation failed. Database '{db_name}' not found after creation attempt. Error: {e_validate}")
+                return False
         elif e.resp.status == 400 and "instance is not running" in str(e.content):
             logger.error(f"Cannot create database '{db_name}' because instance '{instance_name}' is not running. Please start the instance and try again.")
             raise
@@ -203,6 +236,7 @@ def create_postgres_database_if_not_exists(project_id, instance_name, db_name):
     except Exception as e:
         logger.error(f"An unexpected error occurred with database: {e}")
         raise
+    return False
 
 def get_gcloud_user():
     """Gets the currently logged in gcloud user."""
@@ -337,23 +371,48 @@ def ingest_files(rag_corpus_name, paths):
 
 
 
-def main(db_type):
+def main():
     """Main function to create bucket, upload files, create data store, import documents, create Postgres instance and database."""
+    parser = argparse.ArgumentParser(description="Deploy back end services.")
+    parser.add_argument(
+        "db_type",
+        choices=["postgres", "sqlsvr", "mysql", "bq"],
+        help="The type of database to deploy. Choose from: postgres, sqlserver, mysql, bq",
+    )
+    args = parser.parse_args()
+    db_type=args.db_type
+    print(f"Deploying dabase back end for {args.db_type}")
+    
     logger.info(f"Deploying for database type: {db_type}")
     load_dotenv()
 
     project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
     gcs_bucket_name = os.getenv("GOOGLE_CLOUD_STORAGE_BUCKET_DOCS")
     gcs_location = os.getenv("GOOGLE_CLOUD_STORAGE_REGION")
-    postgres_instance_name = os.getenv("GOOGLE_CLOUD_POSTGRES_INSTANCE")
-    postgres_db_name = os.getenv("GOOGLE_CLOUD_POSTGRES_DB")
-    postgres_region = os.getenv("GOOGLE_CLOUD_POSTGRES_REGION") 
-    gcs_bucket_postgres_folder=os.getenv("GOOGLE_CLOUD_POSTGRES_DOC_FOLDER")
-    rag_corpus_name=os.getenv("GOOGLE_CLOUD_RAG_ENGINE_CORPUS_NAME")
     
+    db_type_upper=db_type.upper()
+    db_version=os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_VERSION")
+    db_instance_name = os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_INSTANCE_NAME")
+    db_name = os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_DB")
+    db_region = os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_REGION") 
+    db_gcs_bucket_folder=os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_DOC_FOLDER")
+    rag_corpus_name=os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_RAG_ENGINE_CORPUS_NAME")
+
+    print("Environment variables:")
+    print(f"GOOGLE_CLOUD_PROJECT_ID: {project_id}")
+    print(f"GOOGLE_CLOUD_STORAGE_BUCKET_DOCS: {gcs_bucket_name}")
+    print(f"GOOGLE_CLOUD_STORAGE_REGION: {gcs_location}")
+    print(f"GOOGLE_CLOUD_{db_type_upper}_VERSION: {db_version}")
+    print(f"GOOGLE_CLOUD_{db_type_upper}_INSTANCE_NAME: {db_instance_name}")
+    print(f"GOOGLE_CLOUD_{db_type_upper}_DB: {db_name}")
+    print(f"GOOGLE_CLOUD_{db_type_upper}_REGION: {db_region}")
+    print(f"GOOGLE_CLOUD_{db_type_upper}_DOC_FOLDER: {db_gcs_bucket_folder}")
+    print(f"GOOGLE_CLOUD_{db_type_upper}_RAG_ENGINE_CORPUS_NAME: {rag_corpus_name}")
+
+
     if not all([project_id, gcs_bucket_name, gcs_location,
-                postgres_instance_name, postgres_db_name, postgres_region, 
-                gcs_bucket_postgres_folder, rag_corpus_name]):
+                db_instance_name, db_name, db_region, 
+                db_gcs_bucket_folder, rag_corpus_name]):
         logger.error("Missing required environment variables. Please check your .env file.")
         return
 
@@ -371,23 +430,26 @@ def main(db_type):
 
     # GCS Bucket and Document Upload
     create_bucket_if_not_exists(project_id, gcs_bucket_name, gcs_location)
-    upload_folder_contents(gcs_bucket_name, "documentation/postgres", gcs_bucket_postgres_folder)
+    upload_folder_contents(gcs_bucket_name, f"documentation/{db_type}", db_gcs_bucket_folder)
     
-    # PostgreSQL Instance and Database
-    logger.info("Creating PostgreSQL instance...")
-    instance_ready = create_postgres_instance_if_not_exists(project_id, postgres_instance_name, postgres_region)
+    # DB Instance and Database
+    logger.info(f"Creating {db_type} instance...")
+    instance_ready = create_db_instance_if_not_exists(project_id, db_instance_name, db_region, db_type, db_version)
     
     if instance_ready:
-        if gcloud_user:
+        if gcloud_user and db_type != "sqlsvr":
             try:
-                add_iam_user_to_instance(project_id, postgres_instance_name, gcloud_user)
+                add_iam_user_to_instance(project_id, db_instance_name, gcloud_user)
             except Exception as e:
                 logger.error(f"Could not add IAM user to instance: {e}")
 
-        logger.info("Creating PostgreSQL database...")
-        create_postgres_database_if_not_exists(project_id, postgres_instance_name, postgres_db_name)
+        logger.info(f"Creating {db_type} database...")
+        db_created = create_database_if_not_exists(project_id, db_instance_name, db_name, db_type)
+        if not db_created:
+            logger.error(f"Failed to create database '{db_name}'. Aborting further steps.")
+            return
     else:
-        logger.error(f"Could not proceed to database creation because instance '{postgres_instance_name}' is not ready.")
+        logger.error(f"Could not proceed to database creation because instance '{db_instance_name}' is not ready.")
 
     # Create Rag Engine Corpus
     logger.info("Creating RAG corpus...")
@@ -396,7 +458,7 @@ def main(db_type):
     # Ingest data into RAG
     storage_client = storage.Client()
     bucket = storage_client.bucket(gcs_bucket_name)
-    blobs = bucket.list_blobs(prefix=gcs_bucket_postgres_folder)
+    blobs = bucket.list_blobs(prefix=db_gcs_bucket_folder)
     paths = [f"gs://{gcs_bucket_name}/{blob.name}" for blob in blobs if blob.name.endswith('.pdf')]
     ingest_files(rag_corpus_full_name, paths)
 

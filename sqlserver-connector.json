@@ -1,0 +1,34 @@
+{
+    "displayName": "My Automated Cloud SQL SQL Server Connection",
+    "connectorVersion": "1",
+    "configVariables": [
+        {
+            "key": "host",
+            "value": "localhost"
+        },
+        {
+            "key": "port",
+            "value": "1433"
+        },
+        {
+            "key": "username",
+            "value": "sqlserver"
+        },
+        {
+            "key": "database",
+            "value": "nyc-weather-jeffd"
+        }
+    ],
+    "authConfig": {
+        "authType": "USER_PASSWORD",
+        "credential": {
+            "password": {
+                "secretRef": {
+                    "secret": "sqlserver-password",
+                    "version": "latest"
+                }
+            }
+        }
+    },
+    "serviceAccount": "service-732115074534@gcp-sa-integrations.iam.gserviceaccount.com"
+}
