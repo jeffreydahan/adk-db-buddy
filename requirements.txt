@@ -15,6 +15,7 @@ google-cloud-integrations
  google-cloud-aiplatform[rag]
  google-cloud-discoveryengine
  google-api-python-client
+ google-cloud-cli
 
  # Google ADK
  google-adk
