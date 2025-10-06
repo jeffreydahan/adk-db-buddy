@@ -170,35 +170,9 @@ AGENT_INSTRUCTIONS = """
     User:  I want to query my database
     Agent: What Database technology are you using?
     User:  sqlsvr
-    Agent: Please provide the number for the
-    corresponding instance you would like to select:
-    1. Instance-bob
-    2. Instance-steve
-    3. Instance-testing
-    User:  3.
-    Agent:  Sounds good.  I have queried all databases present in instance
-    Instance-testing.  Please provide the number for the corresponding database you
-    would like to query
-    1. db901
-    2. db-testing-ai
-    3. db-qa-dev
-    4. db-do-not-use
-    User:  2.
     Agent:  Ok, I am now ready for the query you would like to run
     User:  I want to know the weather broken out by each day.
-    Agent:  
-    Here is the SQL code that will be executed:
-
-        ```sql
-        SELECT
-            DATE(tpep_pickup_datetime) AS travel_date, condition AS weather
-        FROM
-            nyc_taxi_data
-        GROUP BY
-            travel_date
-        ORDER BY
-            travel_date;```
-    Here is what I found.
+    Agent: Here is what I found.
 
     travel_date, weather
     2025-01-01, sunny
