@@ -1,5 +1,3 @@
-add sqlsvr_tools.py
-
 """Database Buddy Root Agent: Take the natural language inputs from 
 the end user and execute SQL commands and return outputs."""
 
