@@ -54,9 +54,13 @@ def get_postgres_connection(dbname=None):
         ) from e
 
 
-def _execute_postgres_query_func(database_name: str, query: str) -> str:
-    """Executes a SQL query against a PostgreSQL database and returns the result."""
-    conn = get_postgres_connection(database_name)
+def execute_postgres_query(query: str) -> str:
+    """
+    Executes a SQL query against a PostgreSQL database and returns the result.
+    The postgres connector and corresponding instance/databse/table contains
+    information on nyc taxi rides.
+    """
+    conn = get_postgres_connection()
     cur = conn.cursor()
     try:
         cur.execute(query)
@@ -80,50 +84,4 @@ def _execute_postgres_query_func(database_name: str, query: str) -> str:
         cur.close()
         conn.close()
 
-execute_postgres_query = FunctionTool(_execute_postgres_query_func)
-
-def _list_postgres_databases_func() -> list[str]:
-    """Lists all databases in the PostgreSQL instance."""
-    conn = get_postgres_connection('postgres') # Connect to the default 'postgres' db to query for other dbs
-    cur = conn.cursor()
-    cur.execute("SELECT datname FROM pg_database WHERE datistemplate = false;")
-    databases = [row[0] for row in cur.fetchall()]
-    cur.close()
-    conn.close()
-    return databases
-
-list_postgres_databases = FunctionTool(_list_postgres_databases_func)
-
-def _list_postgres_tables_func(database_name: str) -> list[str]:
-    """Lists all tables in a specific PostgreSQL database."""
-    conn = get_postgres_connection(database_name)
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT table_name
-        FROM information_schema.tables
-        WHERE table_schema = 'public'
-        ORDER BY table_name;
-    """)
-    tables = [row[0] for row in cur.fetchall()]
-    cur.close()
-    conn.close()
-    return tables
-
-list_postgres_tables = FunctionTool(_list_postgres_tables_func)
-
-import googleapiclient.discovery
-
-def _list_postgres_instances_func() -> list[str]:
-    """Lists all PostgreSQL instances in a given Google Cloud project."""
-    service = googleapiclient.discovery.build('sqladmin', 'v1beta4')
-    request = service.instances().list(project=os.getenv("GOOGLE_CLOUD_PROJECT_ID"))
-    response = request.execute()
-
-    instances = []
-    if 'items' in response:
-        for item in response['items']:
-            if item['databaseVersion'].startswith('POSTGRES'):
-                instances.append(item['name'])
-    return instances
-
-list_postgres_instances = FunctionTool(_list_postgres_instances_func)
+execute_postgres_query_tool = FunctionTool(execute_postgres_query)

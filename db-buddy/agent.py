@@ -13,13 +13,8 @@ from google.adk.tools.bigquery import BigQueryToolset
 from google.adk.tools.bigquery.config import BigQueryToolConfig, WriteMode
 from google.genai import types
 
-from .tools import rag_response
-from .postgres_tools import (
-    execute_postgres_query,
-    list_postgres_databases,
-    list_postgres_tables,
-    list_postgres_instances,
-)
+from .postgres_tools import execute_postgres_query_tool
+from .tools import rag_response_tool
 from .prompts import AGENT_INSTRUCTIONS
 
 import vertexai
@@ -58,8 +53,8 @@ app_int_cloud_sql_sqlsvr_connector_tool = ApplicationIntegrationToolset(
             "UPDATE",  # Used for modifying existing records
             "DELETE",  # Used for removing records
             ]
-    },##{"Entity_One": ["LIST","CREATE"], "Entity_Two": []},#empty list for actions means all operations on the entity are supported.
-    # actions=["GET_files"], #TODO: replace with actions
+    },##{'Entity_One': ['LIST','CREATE'], 'Entity_Two': []},#empty list for actions means all operations on the entity are supported.
+    # actions=['GET_files'], #TODO: replace with actions
     ##service_account_credentials='{...}', # optional
     tool_name_prefix=app_int_tool_name_prefix,
     tool_instructions=app_int_tool_instructions
@@ -69,10 +64,10 @@ def setup_before_agent_call(callback_context: CallbackContext):
     """Setup the agent and ensure that the Cloud SQL Proxy is running"""
     
     proxy_path = os.getenv("GOOGLE_CLOUD_SQLSVR_AUTH_PROXY_PATH")
-    sqlsvr_proxy_script = os.getenv("GOOGLE_CLOUD_SQLSVR_AUTH_PROXY_SCRIPT")
+    postgres_proxy_script = "cloud_sql_auth_proxy_postgres.sh"
 
-    if not proxy_path or not sqlsvr_proxy_script:
-        print("Skipping Cloud SQL Auth Proxy setup because environment variables are not set.")
+    if not proxy_path:
+        print("Skipping Cloud SQL Auth Proxy setup because GOOGLE_CLOUD_SQLSVR_AUTH_PROXY_PATH environment variable is not set.")
         return
 
     print("Setting up Cloud SQL Auth Proxy...")
@@ -91,18 +86,18 @@ def setup_before_agent_call(callback_context: CallbackContext):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(script_dir)
     
-    sqlsvr_proxy_script_path = os.path.join(project_root, proxy_path, sqlsvr_proxy_script)
+    postgres_proxy_script_path = os.path.join(project_root, proxy_path, postgres_proxy_script)
 
-    if not os.path.exists(sqlsvr_proxy_script_path):
-        print(f"Error: Cloud SQL Auth Proxy script not found at {sqlsvr_proxy_script_path}")
+    if not os.path.exists(postgres_proxy_script_path):
+        print(f"Error: Cloud SQL Auth Proxy script not found at {postgres_proxy_script_path}")
         return
 
     try:
         # Make sure the script is executable
-        subprocess.run(["chmod", "+x", sqlsvr_proxy_script_path], check=True)
+        subprocess.run(["chmod", "+x", postgres_proxy_script_path], check=True)
         
         # Start the proxy in the background
-        subprocess.Popen([sqlsvr_proxy_script_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen([postgres_proxy_script_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print("New Cloud SQL Auth Proxy process started in the background.")
     except Exception as e:
         print(f"Error: Failed to start Cloud SQL Auth Proxy: {e}")
@@ -112,11 +107,8 @@ root_agent = Agent(
     name="Database_Buddy_Root_Agent",
     instruction=AGENT_INSTRUCTIONS,
     tools=[
-        rag_response,
-        execute_postgres_query,
-        list_postgres_databases,
-        list_postgres_tables,
-        list_postgres_instances,
+        rag_response_tool,
+        execute_postgres_query_tool,
         app_int_cloud_sql_sqlsvr_connector_tool,
     ],
     before_agent_callback=setup_before_agent_call,

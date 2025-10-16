@@ -17,8 +17,8 @@ import os
 from google.adk.tools import FunctionTool
 from vertexai import rag
 
-def _rag_response_func(query: str, db_technology: str) -> str:
-    """Retrieves contextually relevant information from a RAG corpus for a specific database technology.
+def rag_response(query: str, db_technology: str) -> str:
+    """Retriehes contextually relevant information from a RAG corpus for a specific database technology.
 
     Args:
         query (str): The query string to search within the corpus.
@@ -51,4 +51,4 @@ def _rag_response_func(query: str, db_technology: str) -> str:
     )
     return str(response)
 
-rag_response = FunctionTool(_rag_response_func)
+rag_response_tool = FunctionTool(rag_response)
