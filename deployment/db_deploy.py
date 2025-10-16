@@ -1,15 +1,10 @@
 import os
 import logging
 import time
-import pathlib
 import subprocess
 from dotenv import load_dotenv
 from google.cloud import storage
 from google.api_core.exceptions import NotFound
-import vertexai
-from vertexai import rag
-from google.cloud import discoveryengine_v1beta as discoveryengine
-# Corrected import for SQL Admin API
 from googleapiclient import discovery
 from googleapiclient.errors import HttpError
 import argparse
@@ -29,25 +24,6 @@ def create_bucket_if_not_exists(project_id, bucket_name, location):
         logger.info(f"Bucket {bucket_name} not found. Creating new bucket.")
         bucket = storage_client.create_bucket(bucket_name, location=location)
         logger.info(f"Bucket {bucket.name} created in {bucket.location} with storage class {bucket.storage_class}")
-
-def upload_folder_contents(bucket_name, source_folder, destination_prefix=""):
-    """Uploads the contents of a folder to a GCS bucket, optionally under a prefix."""
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    source_path = pathlib.Path(source_folder)
-
-    for file_path in source_path.rglob('*'):
-        if file_path.is_file():
-            # Create blob path relative to the source folder
-            relative_path = file_path.relative_to(source_path).as_posix()
-            # Prepend the destination prefix if it exists
-            if destination_prefix:
-                destination_blob_name = f"{destination_prefix}/{relative_path}"
-            else:
-                destination_blob_name = relative_path
-            blob = bucket.blob(destination_blob_name)
-            blob.upload_from_filename(str(file_path))
-            logger.info(f"File {file_path} uploaded to {destination_blob_name}.")
 
 def wait_for_instance_to_be_runnable(service, project_id, instance_name):
     """Waits for a Cloud SQL instance to become RUNNABLE."""
@@ -190,8 +166,6 @@ def create_db_instance_if_not_exists(project_id, instance_name, region, db_type,
     
     return wait_for_instance_to_be_runnable(service, project_id, instance_name)
 
-
-
 def create_database_if_not_exists(project_id, instance_name, db_name, db_type):
     f"""Creates a {db_type} database within an instance if it does not exist."""
     # Initialize the Cloud SQL Admin API client
@@ -300,77 +274,6 @@ def add_iam_user_to_instance(project_id, instance_name, user_email):
             logger.error(f"Error adding IAM user: {e.stderr}")
             raise
 
-
-def create_RAG_corpus(rag_corpus_name):
-    """Creates a RAG corpus if it does not already exist."""
-    # Check if corpus already exists
-    try:
-        existing_corpora = rag.list_corpora()
-        for corpus in existing_corpora:
-            if corpus.display_name == rag_corpus_name:
-                logger.info(f"RAG corpus '{rag_corpus_name}' already exists.")
-                return corpus.name
-    except Exception as e:
-        logger.warning(f"Could not check for existing RAG corpora, proceeding with creation. Error: {e}")
-
-
-    logger.info(f"Creating RAG corpus '{rag_corpus_name}'...")
-    
-    # Configure embedding model
-    embedding_model_config = rag.RagEmbeddingModelConfig(
-        vertex_prediction_endpoint=rag.VertexPredictionEndpoint(
-            publisher_model="publishers/google/models/text-embedding-005"
-        )
-    )
-
-    backend_config = rag.RagVectorDbConfig(
-        rag_embedding_model_config=embedding_model_config
-    )
-
-    # Create the corpus
-    corpus = rag.create_corpus(
-        display_name=rag_corpus_name,
-        backend_config=backend_config,
-    )
-    logger.info(f"RAG corpus '{rag_corpus_name}' created successfully with name: {corpus.name}")
-    return corpus.name
-
-def ingest_files(rag_corpus_name, paths):
-    logger.info(f"Checking for existing files in corpus {rag_corpus_name}...")
-    existing_files = rag.list_files(corpus_name=rag_corpus_name)
-    existing_file_names = [f.display_name for f in existing_files]
-    logger.info(f"Found {len(existing_file_names)} existing files.")
-
-    files_to_upload = []
-    for path in paths:
-        file_name = os.path.basename(path)
-        if file_name not in existing_file_names:
-            files_to_upload.append(path)
-
-    if not files_to_upload:
-        logger.info("All files already exist in the corpus. Nothing to ingest.")
-        return
-
-    logger.info(f"Ingesting {len(files_to_upload)} new files...")
-    transformation_config = rag.TransformationConfig(
-        chunking_config=rag.ChunkingConfig(
-            chunk_size=512,
-            chunk_overlap=100,
-        ),
-    )
-
-    rag.import_files(
-        rag_corpus_name,
-        files_to_upload,
-        transformation_config=transformation_config,  # Optional
-        max_embedding_requests_per_min=1000,  # Optional
-    )
-
-    # List the files in the rag corpus
-    rag.list_files(rag_corpus_name)
-
-
-
 def main():
     """Main function to create bucket, upload files, create data store, import documents, create Postgres instance and database."""
     parser = argparse.ArgumentParser(description="Deploy back end services.")
@@ -395,9 +298,7 @@ def main():
     db_instance_name = os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_INSTANCE_NAME")
     db_name = os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_DB")
     db_region = os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_REGION") 
-    db_gcs_bucket_folder=os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_DOC_FOLDER")
-    rag_corpus_name=os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_RAG_ENGINE_CORPUS_NAME")
-
+    
     print("Environment variables:")
     print(f"GOOGLE_CLOUD_PROJECT_ID: {project_id}")
     print(f"GOOGLE_CLOUD_STORAGE_BUCKET_DOCS: {gcs_bucket_name}")
@@ -406,13 +307,10 @@ def main():
     print(f"GOOGLE_CLOUD_{db_type_upper}_INSTANCE_NAME: {db_instance_name}")
     print(f"GOOGLE_CLOUD_{db_type_upper}_DB: {db_name}")
     print(f"GOOGLE_CLOUD_{db_type_upper}_REGION: {db_region}")
-    print(f"GOOGLE_CLOUD_{db_type_upper}_DOC_FOLDER: {db_gcs_bucket_folder}")
-    print(f"GOOGLE_CLOUD_{db_type_upper}_RAG_ENGINE_CORPUS_NAME: {rag_corpus_name}")
-
+    
 
     if not all([project_id, gcs_bucket_name, gcs_location,
-                db_instance_name, db_name, db_region, 
-                db_gcs_bucket_folder, rag_corpus_name]):
+                db_instance_name, db_name, db_region, ]):
         logger.error("Missing required environment variables. Please check your .env file.")
         return
 
@@ -428,10 +326,6 @@ def main():
         except Exception as e:
             logger.error(f"Could not add IAM policy binding: {e}")
 
-    # GCS Bucket and Document Upload
-    create_bucket_if_not_exists(project_id, gcs_bucket_name, gcs_location)
-    upload_folder_contents(gcs_bucket_name, f"documentation/{db_type}", db_gcs_bucket_folder)
-    
     # DB Instance and Database
     logger.info(f"Creating {db_type} instance...")
     instance_ready = create_db_instance_if_not_exists(project_id, db_instance_name, db_region, db_type, db_version)
@@ -450,17 +344,6 @@ def main():
             return
     else:
         logger.error(f"Could not proceed to database creation because instance '{db_instance_name}' is not ready.")
-
-    # Create Rag Engine Corpus
-    logger.info("Creating RAG corpus...")
-    rag_corpus_full_name = create_RAG_corpus(rag_corpus_name)
-
-    # Ingest data into RAG
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(gcs_bucket_name)
-    blobs = bucket.list_blobs(prefix=db_gcs_bucket_folder)
-    paths = [f"gs://{gcs_bucket_name}/{blob.name}" for blob in blobs if blob.name.endswith('.pdf')]
-    ingest_files(rag_corpus_full_name, paths)
 
 if __name__ == "__main__":
     main()

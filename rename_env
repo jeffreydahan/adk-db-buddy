@@ -1,0 +1,41 @@
+# Vertex AI Setting
+GOOGLE_GENAI_USE_VERTEXAI="" # Set to 1 to use Vertex AI, otherwise Google AI will be used
+
+# Google Cloud High Level
+GOOGLE_CLOUD_PROJECT_ID="" # Your Google Cloud project ID
+GOOGLE_CLOUD_LOCATION="" # The Google Cloud location for your resources, e.g., us-central1
+
+# Google Cloud Storage
+GOOGLE_CLOUD_STORAGE_BUCKET_DOCS="" # The GCS bucket for storing documents
+GOOGLE_CLOUD_STORAGE_REGION="" # The region for the GCS bucket, e.g., us-central1
+
+# Google Cloud SQL - Postgres
+GOOGLE_CLOUD_POSTGRES_INSTANCE="" # The name of your Cloud SQL Postgres instance
+GOOGLE_CLOUD_POSTGRES_VERSION="" # The version of Postgres, e.g., POSTGRES_14
+GOOGLE_CLOUD_POSTGRES_DB="" # The name of the Postgres database
+GOOGLE_CLOUD_POSTGRES_TABLE="" # The name of the table within the Postgres database
+GOOGLE_CLOUD_POSTGRES_REGION="" # The region for the Cloud SQL Postgres instance, e.g., us-central1
+GOOGLE_CLOUD_POSTGRES_DB_SEED_DATA="" # The CSV file name for seeding the Postgres database
+GOOGLE_CLOUD_POSTGRES_PROXY_SCRIPT="" # The script to start the Cloud SQL Auth Proxy for Postgres
+GOOGLE_CLOUD_POSTGRES_PATH="" # The path to the Cloud SQL Auth Proxy for Postgres"
+
+# Google Cloud SQL - SQL Server
+GOOGLE_CLOUD_SQLSVR_INSTANCE_NAME="" # The name of your Cloud SQL SQL Server instance
+GOOGLE_CLOUD_SQLSVR_VERSION="" # The version of SQL Server, e.g., SQLSERVER_2022_EXPRESS
+GOOGLE_CLOUD_SQLSVR_DB="" # The name of the SQL Server database
+GOOGLE_CLOUD_SQLSVR_TABLE="" # The name of the table within the SQL Server database
+GOOGLE_CLOUD_SQLSVR_REGION="" # The region for the Cloud SQL SQL Server instance, e.g., us-central1
+GOOGLE_CLOUD_SQLSVR_DB_SEED_DATA="" # The CSV file name for seeding the SQL Server database
+GOOGLE_CLOUD_SQLSVR_USER="" # The username for the SQL Server database
+GOOGLE_CLOUD_SQLSVR_PASSWORD="" # The password for the SQL Server user. This is not recommended for production.
+GOOGLE_CLOUD_SQLSVR_PASSWORD_SECRET_NAME="" # The name of the Secret Manager secret for the SQL Server password
+GOOGLE_CLOUD_SQLSVR_INSTANCE_TIER="" # The machine type for the SQL Server instance, e.g., db-custom-1-3840
+
+# Application Integration
+APP_INT_REGION="" # The region for Application Integration resources, e.g., us-central1
+APP_INT_CONNECTION="" # The name of the Application Integration connection
+APP_INT_TOOL_NAME_PREFIX="" # The prefix for the Application Integration tool name
+APP_INT_TOOL_INSTRUCTIONS="" # Instructions for the Application Integration tool
+
+# Models used in Agents
+ROOT_AGENT_MODEL="" # The model to be used for the root agent, e.g., gemini-1.5-flash

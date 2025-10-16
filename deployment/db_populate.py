@@ -4,7 +4,6 @@ import pandas as pd
 import psycopg2
 import subprocess
 import time
-from io import StringIO
 from psycopg2 import Error as Psycopg2Error
 from psycopg2.extras import execute_values
 from dotenv import load_dotenv
@@ -338,12 +337,11 @@ def main():
             
             populate_sqlsvr_database_with_csv(db_name, table_name, csv_path, user, password)
 
-        elif args.db_type == "postgres":
-            logger.info("Starting PostgreSQL population process...")
-            db_name = os.getenv("GOOGLE_CLOUD_POSTGRES_DB")
-            table_name = os.getenv("GOOGLE_CLOUD_POSTGRES_TABLE")
-            csv_path=os.path.join(os.getcwd(), "source-data", args.db_type, os.getenv("GOOGLE_CLOUD_SQLSVR_DB_SEED_DATA"))
-            user = os.getenv("GOOGLE_CLOUD_POSTGRES_USER")
+                    elif args.db_type == "postgres":
+                        logger.info("Starting PostgreSQL population process...")
+                        db_name = os.getenv("GOOGLE_CLOUD_POSTGRES_DB")
+                        table_name = os.getenv("GOOGLE_CLOUD_POSTGRES_TABLE")
+                        csv_path=os.path.join(os.getcwd(), "source-data", args.db_type, os.getenv("GOOGLE_CLOUD_POSTGRES_DB_SEED_DATA"))            user = os.getenv("GOOGLE_CLOUD_POSTGRES_USER")
             password = os.getenv("GOOGLE_CLOUD_POSTGRES_PASSWORD")
 
             if not all([db_name, table_name, csv_path, user, password]):
