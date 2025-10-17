@@ -37,5 +37,12 @@ APP_INT_CONNECTION="" # The name of the Application Integration connection
 APP_INT_TOOL_NAME_PREFIX="" # The prefix for the Application Integration tool name
 APP_INT_TOOL_INSTRUCTIONS="" # Instructions for the Application Integration tool
 
+# Vertex AI RAG Engine
+RAG_SOURCE_FOLDER="" # The local folder containing RAG source data
+RAG_ENGINE_REGION="" # The region for the RAG Engine, e.g., us-central1"
+RAG_ENGINE_NAME="" # The name of the RAG Engine
+RAG_SOURCE_BUCKET="" # The GCS bucket for RAG source data
+RAG_SOURCE_BUCKET_FOLDER="" # The folder within the GCS bucket for RAG source data
+
 # Models used in Agents
-ROOT_AGENT_MODEL="" # The model to be used for the root agent, e.g., gemini-1.5-flash
+ROOT_AGENT_MODEL="" # The model to be used for the root agent, e.g., gemini-2.5-flash
