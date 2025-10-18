@@ -17,9 +17,9 @@ google_cloud_sqlsvr_table=os.getenv("GOOGLE_CLOUD_SQLSVR_TABLE")
 
 # Build Integration Connector object - Cloud SQL SQL Server
 app_int_cloud_sql_sqlsvr_connector = ApplicationIntegrationToolset(
-    project=project_id, # TODO: replace with GCP project of the connection
-    location=cloud_sql_sqlsvr_app_int_region, #TODO: replace with location of the connection
-    connection=cloud_sql_sqlsvr_app_int_connection, #TODO: replace with connection name "projects/genai-app-builder/locations/europe-central2/connections/gdrive-connection", ##
+    project=project_id,
+    location=cloud_sql_sqlsvr_app_int_region, 
+    connection=cloud_sql_sqlsvr_app_int_connection, 
     entity_operations={google_cloud_sqlsvr_table:["LIST", "GET", "CREATE", "UPDATE", "DELETE"]},
     tool_name_prefix=cloud_sql_sqlsvr_app_int_tool_name_prefix,
     tool_instructions=cloud_sql_sqlsvr_app_int_tool_instructions
@@ -34,10 +34,10 @@ google_cloud_postgres_table=os.getenv("GOOGLE_CLOUD_POSTGRES_TABLE")
 
 # Build Integration Connector object - Cloud SQL Postgres
 app_int_cloud_sql_postgres_connector = ApplicationIntegrationToolset(
-    project=project_id, # TODO: replace with GCP project of the connection
-    location=cloud_sql_postgres_app_int_region, #TODO: replace with location of the connection
-    connection=cloud_sql_postgres_app_int_connection, #TODO: replace with connection name "projects/genai-app-builder/locations/europe-central2/connections/gdrive-connection", ##
-    entity_operations={google_cloud_postgres_table:["LIST", "GET", "CREATE", "UPDATE", "DELETE"]},
+    project=project_id, 
+    location=cloud_sql_postgres_app_int_region, 
+    connection=cloud_sql_postgres_app_int_connection, 
+    entity_operations={google_cloud_postgres_table:["LIST", "CREATE", "UPDATE", "DELETE"]},
     tool_name_prefix=cloud_sql_postgres_app_int_tool_name_prefix,
     tool_instructions=cloud_sql_postgres_app_int_tool_instructions
 )
