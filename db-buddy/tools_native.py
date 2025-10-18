@@ -6,22 +6,40 @@ from google.adk.tools.retrieval.vertex_ai_rag_retrieval import VertexAiRagRetrie
 from vertexai.preview import rag
 import vertexai
 
-# Set variables for Integration Connector
 project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
-app_int_region=os.getenv("APP_INT_REGION")
-app_int_connection=os.getenv("APP_INT_CONNECTION")
-app_int_tool_name_prefix=os.getenv("APP_INT_TOOL_NAME_PREFIX")
-app_int_tool_instructions=os.getenv("APP_INT_TOOL_INSTRUCTIONS")
+
+# Set variables for Integration Connector - Cloud SQL SQL Server
+cloud_sql_sqlsvr_app_int_region=os.getenv("CLOUD_SQL_SQLSVR_APP_INT_REGION")
+cloud_sql_sqlsvr_app_int_connection=os.getenv("CLOUD_SQL_SQLSVR_APP_INT_CONNECTION")
+cloud_sql_sqlsvr_app_int_tool_name_prefix=os.getenv("CLOUD_SQL_SQLSVR_APP_INT_TOOL_NAME_PREFIX")
+cloud_sql_sqlsvr_app_int_tool_instructions=os.getenv("CLOUD_SQL_SQLSVR_APP_INT_TOOL_INSTRUCTIONS")
 google_cloud_sqlsvr_table=os.getenv("GOOGLE_CLOUD_SQLSVR_TABLE")
 
-# Build Integration Connector object
+# Build Integration Connector object - Cloud SQL SQL Server
 app_int_cloud_sql_sqlsvr_connector = ApplicationIntegrationToolset(
     project=project_id, # TODO: replace with GCP project of the connection
-    location=app_int_region, #TODO: replace with location of the connection
-    connection=app_int_connection, #TODO: replace with connection name "projects/genai-app-builder/locations/europe-central2/connections/gdrive-connection", ##
+    location=cloud_sql_sqlsvr_app_int_region, #TODO: replace with location of the connection
+    connection=cloud_sql_sqlsvr_app_int_connection, #TODO: replace with connection name "projects/genai-app-builder/locations/europe-central2/connections/gdrive-connection", ##
     entity_operations={google_cloud_sqlsvr_table:["LIST", "GET", "CREATE", "UPDATE", "DELETE"]},
-    tool_name_prefix=app_int_tool_name_prefix,
-    tool_instructions=app_int_tool_instructions
+    tool_name_prefix=cloud_sql_sqlsvr_app_int_tool_name_prefix,
+    tool_instructions=cloud_sql_sqlsvr_app_int_tool_instructions
+)
+
+# Set variables for Integration Connector - Cloud SQL Postgres
+cloud_sql_postgres_app_int_region=os.getenv("CLOUD_SQL_POSTGRES_APP_INT_REGION")
+cloud_sql_postgres_app_int_connection=os.getenv("CLOUD_SQL_POSTGRES_APP_INT_CONNECTION")
+cloud_sql_postgres_app_int_tool_name_prefix=os.getenv("CLOUD_SQL_POSTGRES_APP_INT_TOOL_NAME_PREFIX")
+cloud_sql_postgres_app_int_tool_instructions=os.getenv("CLOUD_SQL_POSTGRES_APP_INT_TOOL_INSTRUCTIONS")
+google_cloud_postgres_table=os.getenv("GOOGLE_CLOUD_POSTGRES_TABLE")
+
+# Build Integration Connector object - Cloud SQL Postgres
+app_int_cloud_sql_postgres_connector = ApplicationIntegrationToolset(
+    project=project_id, # TODO: replace with GCP project of the connection
+    location=cloud_sql_postgres_app_int_region, #TODO: replace with location of the connection
+    connection=cloud_sql_postgres_app_int_connection, #TODO: replace with connection name "projects/genai-app-builder/locations/europe-central2/connections/gdrive-connection", ##
+    entity_operations={google_cloud_postgres_table:["LIST", "GET", "CREATE", "UPDATE", "DELETE"]},
+    tool_name_prefix=cloud_sql_postgres_app_int_tool_name_prefix,
+    tool_instructions=cloud_sql_postgres_app_int_tool_instructions
 )
 
 # Set variables for RAG Engine Connector
@@ -35,6 +53,8 @@ rag_corpus_name = ""
 for corpus in rag_corpora:
     if corpus.display_name == rag_engine_name:
         rag_corpus_name = corpus.name
+        print(f"Found RAG Corpus: {rag_corpus_name}")
+        print(f"Corpus Name: {corpus.name}")
         break
 
 if not rag_corpus_name:
