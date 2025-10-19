@@ -46,3 +46,6 @@ RAG_SOURCE_BUCKET_FOLDER="" # The folder within the GCS bucket for RAG source da
 
 # Models used in Agents
 ROOT_AGENT_MODEL="" # The model to be used for the root agent, e.g., gemini-2.5-flash
+SQLSVR_AGENT_MODEL="" # The model to be used for the SQL Server agent, e.g., gemini-2.5-flash
+POSTGRES_AGENT_MODEL="" # The model to be used for the Postgres agent, e.g., gemini-2.5-flash
+RAG_AGENT_MODEL="" # The model to be used for the RAG agent, e.g., gemini-2.5-flash
