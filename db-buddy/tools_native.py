@@ -37,7 +37,7 @@ app_int_cloud_sql_postgres_connector = ApplicationIntegrationToolset(
     project=project_id, 
     location=cloud_sql_postgres_app_int_region, 
     connection=cloud_sql_postgres_app_int_connection, 
-    entity_operations={google_cloud_postgres_table:["LIST", "CREATE", "UPDATE", "DELETE"]},
+    actions=["ExecuteCustomQuery"],
     tool_name_prefix=cloud_sql_postgres_app_int_tool_name_prefix,
     tool_instructions=cloud_sql_postgres_app_int_tool_instructions
 )
