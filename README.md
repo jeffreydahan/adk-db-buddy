@@ -19,8 +19,7 @@ The agent will allow you to query the above data individually and perform joins 
 *   **Secure Connections:** Uses IAM database authentication for secure connections to your Cloud SQL instances.
 
 ## Architecture
-<img width="2184" height="1340" alt="image" src="https://github.com/user-attachments/assets/1d7f13a9-cec1-4553-a82c-4063829c5713" />
-
+<img width="2184" height="1340" alt="image" src="https://github.com/user-attachments/assets/878bffe4-4d44-4d03-8ff3-0f4e66164b7f" />
 
 DB Buddy is built on the following key technologies:
 
@@ -36,11 +35,9 @@ Follow these steps to get DB Buddy up and running.
 
 ### Prerequisites
 
-*   [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) installed and configured.
-*   [Python 3.10+](https://www.python.org/downloads/)
-*   An active Google Cloud project.
-*   `psql` command-line tool for PostgreSQL.
-*   `sqlcmd` command-line tool for SQL Server.
+* Google Cloud Project
+* IDE (vscode, etc)
+
 
 ### Installation
 
