@@ -1,21 +1,18 @@
- # For loading environment variables from .env file
- python-dotenv
+# For loading environment variables from .env file
+python-dotenv
 
- # For connecting to Postgres
- psycopg2-binary
+# For connecting to Postgres
+psycopg2-binary
 
 # For connecting to SQL Server
 pymssql
 
-# For Application Integration
-google-cloud-integrations
- 
- # Google Cloud client libraries
- google-cloud-storage
- google-cloud-aiplatform[rag]
- google-cloud-discoveryengine
- google-api-python-client
- google-cloud-cli
+# Google Cloud client libraries
+google-cloud-storage
+google-cloud-aiplatform
+google-cloud-discoveryengine
+google-api-python-client
 
- # Google ADK
- google-adk
+
+# Google ADK
+google-adk

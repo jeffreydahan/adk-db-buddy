@@ -3,6 +3,7 @@ GOOGLE_GENAI_USE_VERTEXAI="" # Set to 1 to use Vertex AI, otherwise Google AI wi
 
 # Google Cloud High Level
 GOOGLE_CLOUD_PROJECT_ID="" # Your Google Cloud project ID
+GOOGLE_CLOUD_STORAGE_STAGING_BUCKET="" # The GCS bucket for staging files
 GOOGLE_CLOUD_LOCATION="" # The Google Cloud location for your resources, e.g., us-central1
 
 # Google Cloud Storage
@@ -49,3 +50,11 @@ ROOT_AGENT_MODEL="" # The model to be used for the root agent, e.g., gemini-2.5-
 SQLSVR_AGENT_MODEL="" # The model to be used for the SQL Server agent, e.g., gemini-2.5-flash
 POSTGRES_AGENT_MODEL="" # The model to be used for the Postgres agent, e.g., gemini-2.5-flash
 RAG_AGENT_MODEL="" # The model to be used for the RAG agent, e.g., gemini-2.5-flash
+
+# Agent Engine Deployment
+# for Agent Engine Deployment
+AGENTSPACE_ENGINE_ID="" # e.g., emea-pe-as_456678
+AGENT_NAME="" # e.g., ADK DB Buddy
+AGENT_DESCRIPTION="" # e.g., This agent can help you interact with NY City Taxi and Weather data stored in Cloud SQL databases and RAG Engine.
+AGENT_TOOL_DESCRIPTION="" # e.g., This tool allows the agent to interact with Cloud SQL databases and RAG Engine to retrieve and analyze New York City Taxi and Weather data.
+AGENT_ENGINE_APP_RESOURCE_ID='' # e.g., projects/732115074534/locations/us-central1/reasoningEngines/2493239373005324288
