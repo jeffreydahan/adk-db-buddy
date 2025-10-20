@@ -118,7 +118,7 @@ Follow these steps to get DB Buddy up and running.
     python3 deployment/rag_create.py
     ```
 ## Running the Agent
-From the root of the project (folder above the db-buddy folder), run the following
+From the root of the project (folder above the db_buddy folder), run the following
 ```
 adk web
 ```
@@ -198,7 +198,7 @@ begin interacting with the agent.  Here is a sample interaction:
 ├───README.md
 ├───rename_env
 ├───requirements.txt
-├───db-buddy/
+├───db_buddy/
 │   ├───__init__.py
 │   ├───agent.py
 │   ├───prompts.py
