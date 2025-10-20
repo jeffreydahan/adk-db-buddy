@@ -1,6 +1,13 @@
-# DB Buddy
+# ADK DB Buddy
 
 DB Buddy is a chatbot agent that demonstrates how to connect to multiple data sources using the Google Agent Development Kit (ADK). This agent can interact with a Cloud SQL for PostgreSQL database, a Cloud SQL for SQL Server database (both using Application Integration connectors), and a Retrieval-Augmented Generation (RAG) engine.
+
+This agent makes use of the following source data:
+* Cloud SQL for Postgres database hosting a subset of NYC taxi trip data (containing information such as date, tip amount, distance, etc)
+* Cloud SQL for SQL Server database hosting synthetic data that provides weather conditions (overall weather condition, low/high temperatures) for the days represented in the NYC taxi dataset
+* Vertex AI RAG ENGINE hosting mutliple unstructure files (document, presentation, PDF, json) with synthetic data describing which car/model should be used for each weather condition
+
+The agent will allow you to query the above data individually and perform joins across datasets that would normally not be connected without major coding efforts.
 
 ## Features
 
@@ -18,10 +25,10 @@ DB Buddy is a chatbot agent that demonstrates how to connect to multiple data so
 DB Buddy is built on the following key technologies:
 
 *   **Google Agent Development Kit (ADK):** The core framework for building the conversational agent.
-*   **Google Vertex AI:** Provides the powerful Large Language Models (LLMs) that power the agent's natural language understanding and generation capabilities.
+*   **Google Vertex AI hosting Gemini 2.5 Flash:** Provides the powerful Large Language Models (LLMs) that power the agent's natural language understanding and generation capabilities.
 *   **Google Vertex AI Search and Conversation:** Used to create the RAG engine.
 *   **Google Cloud SQL:** The managed database service used for both PostgreSQL and SQL Server.
-*   **Google Application Integration:** Used to create connectors for the PostgreSQL and SQL Server databases.
+*   **Google Application Integration Connectors:** Used to create connectors for the PostgreSQL and SQL Server databases.
 
 ## Getting Started
 
