@@ -93,9 +93,26 @@ Follow these steps to get DB Buddy up and running.
     gcloud sql connect $INSTANCE_NAME --database=$DB_NAME --user=sqlserver < deployment/db_sqlsvr_populate.sql
     ```
 
-3.  **Set up the Application Integration Connectors:**
-    The Application Integration connectors for PostgreSQL and SQL Server must be set up in your Google Cloud project. Please follow the instructions in the [Application Integration documentation](https://cloud.google.com/application-integration/docs/connectors) to create them.
-4.  **Deploy the RAG Engine:**
+3.  **Set up the Integration Connectors:**
+    The Application Integration connectors for PostgreSQL and SQL Server must be set up in your Google Cloud project. Please follow the instructions in the [Application Integration documentation](https://cloud.google.com/application-integration/docs/connectors) Here are more detailed steps.
+    **Cloud SQL - PostGres**
+    * Click Create New under **Integration Connectors** (ensure you select - Cloud SQL - PostgreSQL)
+      <img width="886" height="1209" alt="image" src="https://github.com/user-attachments/assets/d5d1b19d-97df-4d1c-8022-0af3df81910e" />
+      <img width="886" height="1209" alt="image" src="https://github.com/user-attachments/assets/2cf89aeb-9d2c-4ac6-bec0-f69c656c5c8c" />
+      <img width="886" height="853" alt="image" src="https://github.com/user-attachments/assets/f84c3feb-e001-4e6e-8a3c-c7f5b31b7b01" />
+    * Click Save
+    **Cloud SQL - SQL Server**
+    * Repeat the process above, but chose Cloud SQL - SQL Server
+
+4. **Set up the Application Integration:**
+    * Under Templates, click Click Connection Tool
+      <img width="1076" height="606" alt="image" src="https://github.com/user-attachments/assets/171a0607-1464-4ed1-9de3-f42b4268fdca" />
+    * Click Use Template
+      <img width="939" height="402" alt="image" src="https://github.com/user-attachments/assets/d66fd1cb-913b-4b16-aaa2-073002a33a73" />
+    * Name the integration "ExecuteConnection" (must be exactly this name)  Do not make ANY configuration changes.  This integration is designed specifically for ADK and will handle all connectivity.
+    * You are complete with the connectivity setup.  
+
+6.  **Deploy the RAG Engine:**
     Run the `rag_create.py` script to create the RAG engine and populate it with the source documents.
     ```bash
     python3 deployment/rag_create.py
