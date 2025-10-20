@@ -73,66 +73,114 @@ Follow these steps to get DB Buddy up and running.
     python3 deployment/db_deploy.py postgres
     python3 deployment/db_deploy.py sqlsvr
     ```
-2.  **Set up the Application Integration Connectors:**
+2.  **Data Population:**
+    The next step is to populate your databases with the sample data.
+    
+    **For PostgreSQL:**
+    You will need your Cloud SQL for PostgreSQL instance name and database name from your `.env` file. Then, you can use `gcloud` to connect to the instance and pipe the contents of the SQL script to populate the database.
+    ```bash
+    # Make sure you are in the root of the adk-db-buddy directory
+    INSTANCE_NAME=$(grep GOOGLE_CLOUD_POSTGRES_INSTANCE_NAME .env | cut -d '=' -f2)
+    DB_NAME=$(grep GOOGLE_CLOUD_POSTGRES_DB .env | cut -d '=' -f2)
+    gcloud sql connect $INSTANCE_NAME --database=$DB_NAME < deployment/db_postgres_populate.sql
+    ```
+    
+    **For SQL Server:**
+    Similarly, for SQL Server, you'll use the instance name and database name from your `.env` file.
+    ```bash
+    INSTANCE_NAME=$(grep GOOGLE_CLOUD_SQLSVR_INSTANCE_NAME .env | cut -d '=' -f2)
+    DB_NAME=$(grep GOOGLE_CLOUD_SQLSVR_DB .env | cut -d '=' -f2)
+    gcloud sql connect $INSTANCE_NAME --database=$DB_NAME --user=sqlserver < deployment/db_sqlsvr_populate.sql
+    ```
+
+3.  **Set up the Application Integration Connectors:**
     The Application Integration connectors for PostgreSQL and SQL Server must be set up in your Google Cloud project. Please follow the instructions in the [Application Integration documentation](https://cloud.google.com/application-integration/docs/connectors) to create them.
-3.  **Deploy the RAG Engine:**
+4.  **Deploy the RAG Engine:**
     Run the `rag_create.py` script to create the RAG engine and populate it with the source documents.
     ```bash
     python3 deployment/rag_create.py
     ```
-
-### Data Population
-
-After deploying the databases, you need to populate them with sample data using the provided SQL scripts.
-
-**PostgreSQL:**
-
-Use `psql` to connect to your database and run the population script. You will need to replace the placeholders with your actual database information from the `.env` file.
-
-```bash
-# Example using gcloud to connect
-gcloud sql connect YOUR_POSTGRES_INSTANCE_NAME --user=YOUR_GCLOUD_USER --database=YOUR_POSTGRES_DB_NAME
-# Once connected, run the script:
-\i deployment/db_postgres_populate.sql
+## Running the Agent
+From the root of the project (folder above the db-buddy folder), run the following
+```
+adk web
 ```
 
-**SQL Server:**
+At that point, click the link to the localhost presented in the terminal and you can
+begin interacting with the agent.  Here is a sample interaction:
 
-Use `sqlcmd` to connect to your database and run the population script. You will need your instance's IP address and the password from your `.env` file.
+> **User:** hi
 
-```bash
-# Example connection
-sqlcmd -S YOUR_SQLSVR_INSTANCE_IP -U sqlserver -P YOUR_SQLSVR_PASSWORD -d YOUR_SQLSVR_DB_NAME -i deployment/db_sqlsvr_populate.sql
-```
+**Agent:** Hello! How can I help you today?
 
-## Usage
+> **User:** what are the days that are present for NYC taxi rides
 
-Once the deployment and configuration are complete, you can start the DB Buddy agent and interact with it through the command line.
+**Agent:** The days present for NYC taxi rides are:
 
-```bash
-python3 -m db-buddy.agent
-```
+| ride_date  |
+|------------|
+| 2020-02-13 |
+| 2020-04-20 |
+| 2020-07-10 |
+| 2020-08-01 |
+| 2020-09-12 |
+| 2020-12-04 |
+| 2021-06-18 |
+| 2021-07-09 |
 
-You can now ask questions that query the different data sources. The agent can also join information from the different sources to answer more complex questions.
+> **User:** what is the weather from NYC for those days
 
-### Example Questions
+**Agent:** Here is the weather for the specified days:
 
-*   **Cloud SQL (PostgreSQL):** "What was the total revenue on January 15th, 2016?"
-*   **Cloud SQL (SQL Server):** "What was the weather like in NYC on 2016-01-15?"
-*   **RAG Engine:** "What kind of car is recommended for snowy weather?"
-*   **Joined Query (PostgreSQL and SQL Server):** "What was the total revenue on the day with the most snowfall in January 2016?"
-*   **Joined Query (All sources):** "On the snowiest day in January 2016, what was the total revenue and what car is recommended for that weather?"
+| travel_date | weather |
+|-------------|---------|
+| 2020-02-13  | sunny   |
+| 2020-04-20  | windy   |
+| 2020-07-10  | sunny   |
+| 2020-08-01  | rain    |
+| 2020-09-12  | snow    |
+| 2020-12-04  | snow    |
+| 2021-06-18  | sunny   |
+| 2021-07-09  | rain    |
+
+> **User:** what are the recommended cars to use for these days
+
+**Agent:** Here are the recommended cars for each day based on the weather conditions:
+
+| travel_date | weather | Car Manufacturer | Car Model        |
+|-------------|---------|------------------|------------------|
+| 2020-02-13  | sunny   | Mazda            | MX-5 Miata       |
+| 2020-04-20  | windy   | Jeep             | Grand Cherokee   |
+| 2020-07-10  | sunny   | Mazda            | MX-5 Miata       |
+| 2020-08-01  | rain    | Subaru           | Forrester        |
+| 2020-09-12  | snow    | Volvo            | XC-90            |
+| 2020-12-04  | snow    | Volvo            | XC-90            |
+| 2021-06-18  | sunny   | Mazda            | MX-5 Miata       |
+| 2021-07-09  | rain    | Subaru           | Forrester        |
+
+> **User:** add a column for a possible insight for why this car would be good for the weather on that day
+
+**Agent:** Here are the recommended cars for each day, along with an insight into why they would be good for the weather on that day:
+
+| travel_date | weather | Car Manufacturer | Car Model        | Insight                                                                                             |
+|-------------|---------|------------------|------------------|-----------------------------------------------------------------------------------------------------|
+| 2020-02-13  | sunny   | Mazda            | MX-5 Miata       | A convertible is perfect for enjoying sunny weather.                                                |
+| 2020-04-20  | windy   | Jeep             | Grand Cherokee   | A heavier, more stable SUV can provide better handling and control in windy conditions.               |
+| 2020-07-10  | sunny   | Mazda            | MX-5 Miata       | A convertible is perfect for enjoying sunny weather.                                                |
+| 2020-08-01  | rain    | Subaru           | Forrester        | Subaru's symmetrical all-wheel drive system offers excellent traction and stability in rainy conditions. |
+| 2020-09-12  | snow    | Volvo            | XC-90            | Volvos are known for their safety features and robust performance, making them suitable for snowy roads. |
+| 2020-12-04  | snow    | Volvo            | XC-90            | Volvos are known for their safety features and robust performance, making them suitable for snowy roads. |
+| 2021-06-18  | sunny   | Mazda            | MX-5 Miata       | A convertible is perfect for enjoying sunny weather.                                                |
+| 2021-07-09  | rain    | Subaru           | Forrester        | Subaru's symmetrical all-wheel drive system offers excellent traction and stability in rainy conditions. |
+
 
 ## Project Structure
-
 ```
 /
 ├───.gitignore
 ├───README.md
 ├───rename_env
 ├───requirements.txt
-├───.git/
-├───.venv/
 ├───db-buddy/
 │   ├───__init__.py
 │   ├───agent.py
