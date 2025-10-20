@@ -12,6 +12,8 @@ DB Buddy is a chatbot agent that demonstrates how to connect to multiple data so
 *   **Secure Connections:** Uses IAM database authentication for secure connections to your Cloud SQL instances.
 
 ## Architecture
+<img width="2184" height="1340" alt="image" src="https://github.com/user-attachments/assets/1d7f13a9-cec1-4553-a82c-4063829c5713" />
+
 
 DB Buddy is built on the following key technologies:
 
