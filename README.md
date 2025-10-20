@@ -68,7 +68,7 @@ Follow these steps to get DB Buddy up and running.
 ### Deployment
 
 1.  **Deploy the database infrastructure:**
-    Run the `db_deploy.py` script to create the Cloud SQL instances and databases.
+    Run the `db_deploy.py` script to create the Cloud SQL instances and databases.  This may take some time (30 minutes or so)
     ```bash
     python3 deployment/db_deploy.py postgres
     python3 deployment/db_deploy.py sqlsvr
