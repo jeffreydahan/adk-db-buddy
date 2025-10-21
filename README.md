@@ -67,31 +67,7 @@ Follow these steps to get DB Buddy up and running.
 
 ### Deployment
 
-1.  **Deploy the database infrastructure:**
-    Run the `db_deploy.py` script to create the Cloud SQL instances and databases.  This may take some time (30 minutes or so)
-    ```bash
-    python3 deployment/db_deploy.py postgres
-    python3 deployment/db_deploy.py sqlsvr
-    ```
-2.  **Data Population:**
-    The next step is to populate your databases with the sample data.
-    
-    **For PostgreSQL:**
-    You will need your Cloud SQL for PostgreSQL instance name and database name from your `.env` file. Then, you can use `gcloud` to connect to the instance and pipe the contents of the SQL script to populate the database.
-    ```bash
-    # Make sure you are in the root of the adk-db-buddy directory
-    INSTANCE_NAME=$(grep GOOGLE_CLOUD_POSTGRES_INSTANCE_NAME .env | cut -d '=' -f2)
-    DB_NAME=$(grep GOOGLE_CLOUD_POSTGRES_DB .env | cut -d '=' -f2)
-    gcloud sql connect $INSTANCE_NAME --database=$DB_NAME < deployment/db_postgres_populate.sql
-    ```
-    
-    **For SQL Server:**
-    Similarly, for SQL Server, you'll use the instance name and database name from your `.env` file.
-    ```bash
-    INSTANCE_NAME=$(grep GOOGLE_CLOUD_SQLSVR_INSTANCE_NAME .env | cut -d '=' -f2)
-    DB_NAME=$(grep GOOGLE_CLOUD_SQLSVR_DB .env | cut -d '=' -f2)
-    gcloud sql connect $INSTANCE_NAME --database=$DB_NAME --user=sqlserver < deployment/db_sqlsvr_populate.sql
-    ```
+The `deploy_commands.sh` script contains all the necessary commands to deploy the required infrastructure and populate the databases. Please execute the commands in the script one by one, as some services take time to provision.
 
 3.  **Set up the Integration Connectors:**
     The Application Integration connectors for PostgreSQL and SQL Server must be set up in your Google Cloud project. Please follow the instructions in the [Application Integration documentation](https://cloud.google.com/application-integration/docs/connectors) Here are more detailed steps.
@@ -111,12 +87,10 @@ Follow these steps to get DB Buddy up and running.
       <img width="939" height="402" alt="image" src="https://github.com/user-attachments/assets/d66fd1cb-913b-4b16-aaa2-073002a33a73" />
     * Name the integration "ExecuteConnection" (must be exactly this name)  Do not make ANY configuration changes.  This integration is designed specifically for ADK and will handle all connectivity.
     * You are complete with the connectivity setup.  
+### Deployment Commands
 
-6.  **Deploy the RAG Engine:**
-    Run the `rag_create.py` script to create the RAG engine and populate it with the source documents.
-    ```bash
-    python3 deployment/rag_create.py
-    ```
+This project includes a `deploy_commands.sh` file that contains the necessary commands to deploy the agent. Please note that this script is not intended to be run all at once. The commands should be executed one section at a time to allow for the timing of individual service deployments.
+
 ## Running the Agent
 From the root of the project (folder above the db_buddy folder), run the following
 ```
@@ -205,7 +179,7 @@ begin interacting with the agent.  Here is a sample interaction:
 │   ├───tools_custom.py
 │   ├───tools_native.py
 │   └───__pycache__/
-├───deployment/
+├───connector_deployment/
 │   ├───db_deploy.py
 │   ├───db_postgres_populate.sql
 │   ├───db_sqlsvr_populate.sql

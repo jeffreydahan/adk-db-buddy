@@ -29,17 +29,17 @@ then
 fi
 
 # Configuration: Use variables from .env or provide defaults/ensure they are set
-PROJECT_ID="${GOOGLE_CLOUD_PROJECT}"
+PROJECT_ID="${GOOGLE_CLOUD_PROJECT_ID}"
 COLLECTION_ID="${COLLECTION_ID:-default_collection}" # Default if not in .env
 ENGINE_ID="${AGENTSPACE_ENGINE_ID}"
 ASSISTANT_ID="${ASSISTANT_ID:-default_assistant}"   # Default if not in .env
 
 ### Change this variable as needed if you want to delete other agents as well
-AGENT_NAME_TO_DELETE="CameraCleaningAgent"               # Agent's displayName to delete
+AGENT_NAME_TO_DELETE="${AGENT_NAME}"               # Agent's displayName to delete
 
 # Validate required variables that don't have defaults
 if [ -z "${PROJECT_ID}" ]; then
-    echo "Error: GOOGLE_CLOUD_PROJECT is not set. Please set it in your .env file or environment."
+    echo "Error: GOOGLE_CLOUD_PROJECT_ID is not set. Please set it in your .env file or environment."
     exit 1
 fi
 if [ -z "${ENGINE_ID}" ]; then

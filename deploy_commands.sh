@@ -36,23 +36,18 @@ bash remove_from_agentspace.sh
 source ~/code/agent_cleaning/.venv/bin/activate
 source ~/code/agent_cleaning/.env
 
-# redeploy cloud run with new IP:
-RTSP_IP_ADDRESS="$(curl -s icanhazip.com)" #set the new IP address
-echo $RTSP_IP_ADDRESS
-sed -i.bak "s/^RTSP_IP_ADDRESS=.*/RTSP_IP_ADDRESS=\"${RTSP_IP_ADDRESS}\"/" .env # update env file
-create_or_update_secret "rtsp-ip-address" "$RTSP_IP_ADDRESS" # update the secret
-gcloud run deploy camera-tool-svc \
-  --image "$GOOGLE_CLOUD_LOCATION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/$GOOGLE_CLOUD_ARTIFACT_REPO/camera-tool-image:latest" \
-  --platform managed \
-  --region "$GOOGLE_CLOUD_LOCATION" \
-  --no-allow-unauthenticated \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT"
+# Deploy connector infrastructure
+python3 connector_deployment/db_deploy.py postgres
+python3 connector_deployment/db_deploy.py sqlsvr
 
-# Test cloud run
-curl -X POST "https://camera-tool-svc-732115074534.us-central1.run.app" \
--H "Authorization: bearer $(gcloud auth print-identity-token)" \
--H "Content-Type: application/json" \
--d '{
-  "room": "demobooth"
-}'
+# Populate databases
+INSTANCE_NAME=$(grep GOOGLE_CLOUD_POSTGRES_INSTANCE_NAME .env | cut -d '=' -f2)
+DB_NAME=$(grep GOOGLE_CLOUD_POSTGRES_DB .env | cut -d '=' -f2)
+gcloud sql connect $INSTANCE_NAME --database=$DB_NAME < connector_deployment/db_postgres_populate.sql
 
+INSTANCE_NAME=$(grep GOOGLE_CLOUD_SQLSVR_INSTANCE_NAME .env | cut -d '=' -f2)
+DB_NAME=$(grep GOOGLE_CLOUD_SQLSVR_DB .env | cut -d '=' -f2)
+gcloud sql connect $INSTANCE_NAME --database=$DB_NAME --user=sqlserver < connector_deployment/db_sqlsvr_populate.sql
+
+# Create RAG engine
+python3 connector_deployment/rag_create.py

@@ -45,12 +45,20 @@ async def main():
     user_id = "u_458"
 
     remote_session = await remote_app.async_create_session(user_id=user_id)
+    print("Created session:")
     print(remote_session)
 
+    print("\nQuerying agent with message...")
+    print(f"User ID: u_456")
+    print(f"Session ID: {remote_session['id']}")
+    message = "what car models are recommended for snowy weather conditions?"
+    print(f"Message: {message}")
+
+    print("\nStreaming responses:")
     async for event in remote_app.async_stream_query(
         user_id="u_456",
         session_id=remote_session["id"],
-        message="what car models are recommended for snowy weather conditions?",
+        message=message,
         #message="please list the average tip by day for nyc taxi rides.  Also include the weather for each day and recommend a car make and model based upon the weather conditions.",
     ):
         print(event)
