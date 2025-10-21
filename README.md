@@ -9,6 +9,9 @@ This agent makes use of the following source data:
 
 The agent will allow you to query the above data individually and perform joins across datasets that would normally not be connected without major coding efforts.
 
+This is a personal project and is not endorsed by Google.  No warrantees here.  Use at your own risk.  You may want to 'Stop' your Cloud SQL Instances when not in use to save consumption charges while you are testing out this code.
+
+
 ## Features
 
 *   **Multi-Tool Connectivity:** Demonstrates the use of Application Integration and RAG connectors within a single agent.
