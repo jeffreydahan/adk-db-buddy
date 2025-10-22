@@ -4,6 +4,11 @@
 # Add the project root to the Python path to allow for absolute imports
 import sys
 import os
+from dotenv import set_key, load_dotenv, get_key # Import dotenv first
+
+# Load environment variables from .env file immediately
+load_dotenv()
+
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 # Import everything from the agent.py
@@ -15,13 +20,9 @@ from vertexai import agent_engines
 # Helper function to get environment variables
 def get_env_var(key):
     value = os.getenv(key)
-    if value is None:
-        raise ValueError(f"Environment variable '{key}' not found.")
+    if value is None or not value.strip():
+        raise ValueError(f"Environment variable '{key}' not found or is empty.")
     return value
-
-# Import packages to assist with writing/reading env variables
-from dotenv import set_key, load_dotenv, get_key
-load_dotenv()
 
 # Set variables from env
 project_id=get_env_var("GOOGLE_CLOUD_PROJECT_ID")
@@ -49,6 +50,12 @@ env_vars = {
     "AGENT_DESCRIPTION": agent_description,
     "AGENT_NAME": agent_name,
 }
+
+# Create Agent Engine App Object
+adk_app = reasoning_engines.AdkApp(
+    agent=root_agent,
+    enable_tracing=True,
+)
 
 # Upload the ADK Agent to Agent Engine
 remote_app = agent_engines.create(

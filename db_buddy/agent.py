@@ -8,14 +8,22 @@ from google.adk.agents import Agent
 from .tools_native import app_int_cloud_sql_sqlsvr_connector, app_int_cloud_sql_postgres_connector, rag_engine_connector
 from .prompts import root_agent_instructions, cloud_sql_postgres_agent_instructions, cloud_sql_sqlsvr_agent_instructions, rag_engine_agent_instructions
 import vertexai
+import os
 
-# Load env variables
-root_agent_model = os.getenv("ROOT_AGENT_MODEL")
-cloud_sql_postgres_agent_model = os.getenv("POSTGRES_AGENT_MODEL")
-cloud_sql_sqlsvr_agent_model = os.getenv("SQLSVR_AGENT_MODEL")
-rag_agent_model = os.getenv("RAG_AGENT_MODEL")
-project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
-region = os.getenv("GOOGLE_CLOUD_LOCATION")
+# Helper function to get environment variables
+def get_env_var(key):
+    value = os.getenv(key)
+    if value is None or not value.strip():
+        raise ValueError(f"Environment variable '{key}' not found or is empty.")
+    return value
+
+# Load required env variables
+root_agent_model = get_env_var("ROOT_AGENT_MODEL")
+cloud_sql_postgres_agent_model = get_env_var("POSTGRES_AGENT_MODEL")
+cloud_sql_sqlsvr_agent_model = get_env_var("SQLSVR_AGENT_MODEL")
+rag_agent_model = get_env_var("RAG_AGENT_MODEL")
+project_id = get_env_var("GOOGLE_CLOUD_PROJECT_ID")
+region = get_env_var("GOOGLE_CLOUD_LOCATION")
 
 # Initialize Vertex AI
 vertexai.init(project=project_id, location=region)

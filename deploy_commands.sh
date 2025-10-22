@@ -12,6 +12,21 @@ gcloud services enable storage.googleapis.com
 cd ~/code/adk-db-buddy
 source .env
 
+# Deploy database infrastructure
+python3 connector_deployment/db_deploy.py postgres
+python3 connector_deployment/db_deploy.py sqlsvr
+
+# Populate databases
+INSTANCE_NAME=$(grep GOOGLE_CLOUD_POSTGRES_INSTANCE_NAME .env | cut -d '=' -f2)
+DB_NAME=$(grep GOOGLE_CLOUD_POSTGRES_DB .env | cut -d '=' -f2)
+gcloud sql connect $INSTANCE_NAME --database=$DB_NAME < connector_deployment/db_postgres_populate.sql
+
+INSTANCE_NAME=$(grep GOOGLE_CLOUD_SQLSVR_INSTANCE_NAME .env | cut -d '=' -f2)
+DB_NAME=$(grep GOOGLE_CLOUD_SQLSVR_DB .env | cut -d '=' -f2)
+gcloud sql connect $INSTANCE_NAME --database=$DB_NAME --user=sqlserver < connector_deployment/db_sqlsvr_populate.sql
+
+# Create RAG engine
+python3 connector_deployment/rag_create.py
 
 # Deploy to Agent Engine
 cd ~/code/adk-db-buddy
@@ -20,7 +35,7 @@ python3 deploy_to_agent_engine.py
 echo $AGENT_ENGINE_APP_RESOURCE_ID
 
 # Query from Agent Engine
-python3 adk-db-buddy/query_agent_engine.py 
+python3 query_agent_engine.py 
 
 # Deploy to Agentspace
 cd ~/code/adk-db-buddy
@@ -36,18 +51,3 @@ bash remove_from_agentspace.sh
 source ~/code/agent_cleaning/.venv/bin/activate
 source ~/code/agent_cleaning/.env
 
-# Deploy connector infrastructure
-python3 connector_deployment/db_deploy.py postgres
-python3 connector_deployment/db_deploy.py sqlsvr
-
-# Populate databases
-INSTANCE_NAME=$(grep GOOGLE_CLOUD_POSTGRES_INSTANCE_NAME .env | cut -d '=' -f2)
-DB_NAME=$(grep GOOGLE_CLOUD_POSTGRES_DB .env | cut -d '=' -f2)
-gcloud sql connect $INSTANCE_NAME --database=$DB_NAME < connector_deployment/db_postgres_populate.sql
-
-INSTANCE_NAME=$(grep GOOGLE_CLOUD_SQLSVR_INSTANCE_NAME .env | cut -d '=' -f2)
-DB_NAME=$(grep GOOGLE_CLOUD_SQLSVR_DB .env | cut -d '=' -f2)
-gcloud sql connect $INSTANCE_NAME --database=$DB_NAME --user=sqlserver < connector_deployment/db_sqlsvr_populate.sql
-
-# Create RAG engine
-python3 connector_deployment/rag_create.py
