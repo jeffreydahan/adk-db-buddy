@@ -28,26 +28,29 @@ gcloud sql connect $INSTANCE_NAME --database=$DB_NAME --user=sqlserver < connect
 # Create RAG engine
 python3 connector_deployment/rag_create.py
 
-# Deploy to Agent Engine
-cd ~/code/adk-db-buddy
+# At this point, you can try to run the agent locally using:
+# adk web
+# select db_buddy as the agent on the right-hand side
+# and test queries against the databases and RAG engine.
+
+# Optional deploy to Agent Engine
 source .env
 python3 deploy_to_agent_engine.py
 echo $AGENT_ENGINE_APP_RESOURCE_ID
 
-# Query from Agent Engine
-python3 query_agent_engine.py 
+# Deploy to Gemini Enterprise
+bash deploy_to_gemini_enterprise.sh
 
-# Deploy to Agentspace
-cd ~/code/adk-db-buddy
-bash deploy_to_agentspace.sh
+### REMOVAL SECTION ###
 
-# Remove from Agentspace (based on Agent Name in env file; if updated, run the
+# Remove from Gemini Enterprise
+bash remove_from_gemini_enterprise.sh
+
+# Remove from Agent Engine (based on Agent Name in env file; if updated, run the
 # source command)
-cd ~/code/agent_cleaning
-bash remove_from_agentspace.sh
+python remove_from_agent_engine.py
 
 
-# if session restarts:
-source ~/code/agent_cleaning/.venv/bin/activate
-source ~/code/agent_cleaning/.env
+# if session restarts, kill the terminal and open a new terminal.  Ensure that
+# you run gcloud auth login and gcloud auth application-default login again.
 

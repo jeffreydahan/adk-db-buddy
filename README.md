@@ -1,6 +1,11 @@
 # ADK DB Buddy
 
-DB Buddy is a chatbot agent that demonstrates how to connect to multiple data sources using the Google Agent Development Kit (ADK). This agent can interact with a Cloud SQL for PostgreSQL database, a Cloud SQL for SQL Server database (both using Application Integration connectors), and a Retrieval-Augmented Generation (RAG) engine.
+ADK DB Buddy is a chatbot agent that demonstrates how to connect to multiple data sources using the Google Agent Development Kit (ADK). This agent can interact with a Cloud SQL for PostgreSQL database, a Cloud SQL for SQL Server database (both using Application Integration connectors), and a Retrieval-Augmented Generation (RAG) engine.  Finally, this Agent can be run locally in a dev environment by running
+```
+adk web
+```
+or you can deploy the agent to Vertex AI Agent Engine and then into Google
+Gemini Enterprise.
 
 This agent makes use of the following source data:
 * Cloud SQL for Postgres database hosting a subset of NYC taxi trip data (containing information such as date, tip amount, distance, etc)
@@ -20,6 +25,13 @@ This is a personal project and is not endorsed by Google.  No warrantees here.  
 *   **Retrieval-Augmented Generation (RAG):** Utilizes a RAG engine to provide answers from a corpus of documents.
 *   **Joined Queries:** Can join information from the different data sources to answer complex questions.
 *   **Secure Connections:** Uses IAM database authentication for secure connections to your Cloud SQL instances.
+*   **Vertex AI Agent Engine:** Deployment option to make use of Google's 
+Enterprise-grade AI Platform, consisting of full Cloud Security, Logging,
+Tracing and more.  Click [here](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview) for more information.
+*   **Gemini Enterprise:** Register the agent into Google's Gemini Enterprise
+for integration into a secured SaaS Platform dedicated to Enterprise Search
+and Agents.  Click [here](https://cloud.google.com/gemini-enterprise) for more information.
+
 
 ## Architecture
 <img width="2184" height="1340" alt="image" src="https://github.com/user-attachments/assets/878bffe4-4d44-4d03-8ff3-0f4e66164b7f" />
@@ -70,7 +82,8 @@ Follow these steps to get DB Buddy up and running.
 
 ### Deployment
 
-The `deploy_commands.sh` script contains all the necessary commands to deploy the required infrastructure and populate the databases. Please execute the commands in the script one by one, as some services take time to provision.
+The `deploy_commands.sh` script contains all the necessary commands to deploy the required infrastructure and populate the databases. Please execute the commands in the script one by one, as some services take time to provision. 
+In the following steps, you will see how to deploy certain parts of the infrastructure stack using the [Google Cloud Console](https://console.cloud.google.com/).
 
 3.  **Set up the Integration Connectors:**
     The Application Integration connectors for PostgreSQL and SQL Server must be set up in your Google Cloud project. Please follow the instructions in the [Application Integration documentation](https://cloud.google.com/application-integration/docs/connectors) Here are more detailed steps.
@@ -167,30 +180,41 @@ begin interacting with the agent.  Here is a sample interaction:
 | 2021-06-18  | sunny   | Mazda            | MX-5 Miata       | A convertible is perfect for enjoying sunny weather.                                                |
 | 2021-07-09  | rain    | Subaru           | Forrester        | Subaru's symmetrical all-wheel drive system offers excellent traction and stability in rainy conditions. |
 
+If you have opted to deploy to Agent Engine and to register into Gemini Enterprise, you can open up your link to Gemini Enterprise provided by your organization and click on the 'Agents' section.  You will see your agent under the section called 'From your organization'.  Click to open the agent and begin chatting using the same example flow above.
+
 
 ## Project Structure
 ```
-/
-├───.gitignore
-├───README.md
-├───rename_env
-├───requirements.txt
-├───db_buddy/
-│   ├───__init__.py
-│   ├───agent.py
-│   ├───prompts.py
-│   ├───tools_custom.py
-│   ├───tools_native.py
-│   └───__pycache__/
-├───connector_deployment/
-│   ├───db_deploy.py
-│   ├───db_postgres_populate.sql
-│   ├───db_sqlsvr_populate.sql
-│   └───rag_create.py
-└───source-data/
-    └───rag/
-        ├───Taxi Car Weather Recommendation - json.json
-        ├───Taxi Car Weather Recommendations - Doc.docx
-        ├───Taxi Car Weather Recommendations - PDF.pdf
-        └───Taxi Car Weather Recommendations - Slides.pptx
+.
+├── connector_deployment
+│   ├── db_deploy.py
+│   ├── db_postgres_populate.sql
+│   ├── db_sqlsvr_populate.sql
+│   ├── rag_create.py
+│   └── rag_source
+│       ├── 'Taxi Car Weather Recommendation - json.json'
+│       ├── 'Taxi Car Weather Recommendations - Doc.docx'
+│       ├── 'Taxi Car Weather Recommendations - PDF.pdf'
+│       └── 'Taxi Car Weather Recommendations - Slides.pptx'
+├── db_buddy
+│   ├── agent.py
+│   ├── __init__.py
+│   ├── prompts.py
+│   ├── tools
+│   │   ├── tools_custom.py
+│   │   └── tools_native.py
+│   └── utils
+│       ├── deployment.py
+│       ├── gcs.py
+│       ├── tracing.py
+│       └── typing.py
+├── deploy_commands.sh
+├── deploy_to_agent_engine.py
+├── deploy_to_gemini_enterprise.sh
+├── query_agent_engine.py
+├── README.md
+├── remove_from_agent_engine.py
+├── remove_from_gemini_enterprise.sh
+├── rename_env
+└── requirements.txt
 ```
