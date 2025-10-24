@@ -13,3 +13,5 @@ emea-pe-agentspace:us-central1:postgres-instance01-jeffd/
 # Python cache
 __pycache__/
 *.pyc
+
+.backup*
