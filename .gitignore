@@ -2,6 +2,7 @@
 .venv/
 cloud_sql_proxy
 cloud_sql_proxy.log
+deployment_metadata.json
 
 # Log files
 proxy.log

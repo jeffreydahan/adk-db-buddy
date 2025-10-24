@@ -1,98 +1,266 @@
-# Deploys the agent.py root_agent (and all dependent agents)
-# to Vertex AI Agent Engine
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# Add the project root to the Python path to allow for absolute imports
-import sys
+# mypy: disable-error-code="attr-defined,arg-type"
+import logging
 import os
-from dotenv import set_key, load_dotenv, get_key # Import dotenv first
+from typing import Any
 
-# Load environment variables from .env file immediately
+import click
+import google.auth
+import vertexai
+from google.adk.artifacts import GcsArtifactService
+from google.cloud import logging as google_cloud_logging
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider, export
+from vertexai._genai.types import AgentEngine, AgentEngineConfig
+from vertexai.agent_engines.templates.adk import AdkApp
+from dotenv import load_dotenv
 load_dotenv()
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-# Import everything from the agent.py
 from db_buddy.agent import root_agent
-import vertexai
-from vertexai.preview import reasoning_engines
-from vertexai import agent_engines
-
-# Helper function to get environment variables
-def get_env_var(key):
-    value = os.getenv(key)
-    if value is None or not value.strip():
-        raise ValueError(f"Environment variable '{key}' not found or is empty.")
-    return value
-
-# Set variables from env
-project_id=get_env_var("GOOGLE_CLOUD_PROJECT_ID")
-staging_bucket="gs://"+get_env_var("GOOGLE_CLOUD_STORAGE_STAGING_BUCKET")
-location=get_env_var("GOOGLE_CLOUD_LOCATION")
-agent_description=get_env_var("AGENT_DESCRIPTION")
-agent_name=get_env_var("AGENT_NAME")
-
-# initialitze vertexai
-vertexai.init(
-    project=project_id,
-    location=location,
-    staging_bucket=staging_bucket,
+from db_buddy.utils.deployment import (
+    parse_env_vars,
+    print_deployment_success,
+    write_deployment_metadata,
 )
+from db_buddy.utils.gcs import create_bucket_if_not_exists
+from db_buddy.utils.tracing import CloudTraceLoggingSpanExporter
+from db_buddy.utils.typing import Feedback
 
-requirements_path = "requirements.txt"
-with open(requirements_path, "r") as f:
-    requirements_list = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
+
+class AgentEngineApp(AdkApp):
+    def set_up(self) -> None:
+        """Set up logging and tracing for the agent engine app."""
+        import logging
+
+        super().set_up()
+        logging.basicConfig(level=logging.INFO)
+        logging_client = google_cloud_logging.Client()
+        self.logger = logging_client.logger(__name__)
+        provider = TracerProvider()
+        processor = export.BatchSpanProcessor(
+            CloudTraceLoggingSpanExporter(
+                project_id=os.environ.get("GOOGLE_CLOUD_PROJECT")
+            )
+        )
+        provider.add_span_processor(processor)
+        trace.set_tracer_provider(provider)
+
+    def register_feedback(self, feedback: dict[str, Any]) -> None:
+        """Collect and log feedback."""
+        feedback_obj = Feedback.model_validate(feedback)
+        self.logger.log_struct(feedback_obj.model_dump(), severity="INFO")
+
+    def register_operations(self) -> dict[str, list[str]]:
+        """Registers the operations of the Agent.
+
+        Extends the base operations to include feedback registration functionality.
+        """
+        operations = super().register_operations()
+        operations[""] = operations.get("", []) + ["register_feedback"]
+        return operations
 
 
-# Specific environment variables that you want to pass
-# to be included with Agent Engine Deployment
-env_vars = {
-    "GOOGLE_CLOUD_STORAGE_STAGING_BUCKET": staging_bucket,
-    "AGENT_DESCRIPTION": agent_description,
-    "AGENT_NAME": agent_name,
-}
-
-# Create Agent Engine App Object
-adk_app = reasoning_engines.AdkApp(
-    agent=root_agent,
-    enable_tracing=True,
+@click.command()
+@click.option(
+    "--project",
+    default=None,
+    help="GCP project ID (defaults to application default credentials)",
 )
-
-# Upload the ADK Agent to Agent Engine
-remote_app = agent_engines.create(
-    agent_engine=root_agent,
-    requirements=requirements_list,
-    display_name=agent_name,
-    description=agent_description,
-    extra_packages=[
-        "db_buddy/agent.py",
-        "db_buddy/prompts.py",
-        "db_buddy/tools_native.py",
-    ],
-    env_vars=env_vars
+@click.option(
+    "--location",
+    default=os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1"),
+    help="GCP region (defaults to us-central1)",
 )
+@click.option(
+    "--agent-name",
+    default=os.getenv("AGENT_NAME","DB_Buddy"),
+    help="Name for the agent engine",
+)
+@click.option(
+    "--requirements-file",
+    default=os.getenv("AGENT_REQUIREMENTS_FILE_NAME","requirements.txt"),
+    help="Path to requirements.txt file",
+)
+@click.option(
+    "--extra-packages",
+    multiple=True,
+    default=["db_buddy"],
+    help="Additional packages to include",
+)
+@click.option(
+    "--set-env-vars",
+    default=None,
+    help="Comma-separated list of environment variables in KEY=VALUE format",
+)
+@click.option(
+    "--service-account",
+    default=None,
+    help="Service account email to use for the agent engine",
+)
+@click.option(
+    "--staging-bucket-uri",
+    default=os.getenv("GOOGLE_CLOUD_STORAGE_STAGING_BUCKET", None),
+    help="GCS bucket URI for staging files (defaults to gs://{project}-agent-engine)",
+)
+@click.option(
+    "--artifacts-bucket-name",
+    default=os.getenv("GOOGLE_CLOUD_STORAGE_STAGING_BUCKET", None),
+    help="GCS bucket name for artifacts (defaults to gs://{project}-agent-engine)",
+)
+def deploy_agent_engine_app(
+    project: str | None,
+    location: str,
+    agent_name: str,
+    requirements_file: str,
+    extra_packages: tuple[str, ...],
+    set_env_vars: str | None,
+    service_account: str | None,
+    staging_bucket_uri: str | None,
+    artifacts_bucket_name: str | None,
+) -> AgentEngine:
+    """Deploy the agent engine app to Vertex AI."""
 
-print(remote_app.resource_name)
+    logging.basicConfig(level=logging.INFO)
 
-# Set the Agent Engine Agent ID to an env variable for use in the next phase of
-# deploying to Agentspace if desired. This script updates the .env file with
-# the new resource ID.
-dotenv_path = ".env"  # Relative to project root
-set_key(dotenv_path, "AGENT_ENGINE_APP_RESOURCE_ID", remote_app.resource_name)
-print(f"AGENT_ENGINE_APP_RESOURCE_ID='{remote_app.resource_name}' has been set in {dotenv_path}")
+    # Parse environment variables if provided
+    env_vars = parse_env_vars(set_env_vars)
 
-# Verify the key was written correctly to the .env file
-print(f"Verifying AGENT_ENGINE_APP_RESOURCE_ID in {dotenv_path}...")
-written_value = get_key(dotenv_path, "AGENT_ENGINE_APP_RESOURCE_ID")
-if written_value == remote_app.resource_name:
-    print(f"Successfully verified AGENT_ENGINE_APP_RESOURCE_ID: {written_value}")
-    # Update the current process's environment for consistency.
-    os.environ["AGENT_ENGINE_APP_RESOURCE_ID"] = remote_app.resource_name
-else:
-    print(f"Error: AGENT_ENGINE_APP_RESOURCE_ID could not be verified in {dotenv_path}. Expected '{remote_app.resource_name}', got '{written_value}'")
+    # Load all env vars from .env file and merge with command-line env vars
+    dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+    print(f"Loading environment variables from {dotenv_path}")
+    if os.path.exists(dotenv_path):
+        with open(dotenv_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    # Add to env_vars, but do not overwrite values set from the command line
+                    if key not in env_vars and key != 'GOOGLE_CLOUD_PROJECT' and key != 'GOOGLE_CLOUD_LOCATION':
+                        env_vars[key] = os.environ.get(key)
 
-# now setting the env variable in the current environment for AGENT_ENGINE_APP_RESOURCE_ID
-os.environ["AGENT_ENGINE_APP_RESOURCE_ID"] = remote_app.resource_name
+    if not project:
+        _, project = google.auth.default()
 
-# You can see this agent inside of Vertex AI Agent Engine.  You can delete it from
-# the Google Cloud Console if desired.  If you get an error, ensure you have
-# deleted all sessions in the Agent first.
+    # Ensure staging_bucket_uri always starts with gs://
+    if not staging_bucket_uri:
+        staging_bucket_uri = f"gs://{project}-agent-engine"
+    elif not staging_bucket_uri.startswith("gs://"):
+        staging_bucket_uri = f"gs://{staging_bucket_uri}"
+
+    # Ensure artifacts_bucket_name always starts with gs://
+    if not artifacts_bucket_name:
+        artifacts_bucket_name = f"gs://{project}-agent-engine"
+    elif not artifacts_bucket_name.startswith("gs://"):
+        artifacts_bucket_name = f"gs://{artifacts_bucket_name}"
+
+    create_bucket_if_not_exists(
+        bucket_name=artifacts_bucket_name.replace("gs://", ""), project=project, location=location
+    )
+    create_bucket_if_not_exists(
+        bucket_name=staging_bucket_uri.replace("gs://", ""), project=project, location=location
+    )
+
+    print("""
+    ╔═══════════════════════════════════════════════════════════╗
+    ║                                                           ║
+    ║   🤖 DEPLOYING AGENT TO VERTEX AI AGENT ENGINE 🤖         ║
+    ║                                                           ║
+    ╚═══════════════════════════════════════════════════════════╝
+    """)
+
+    extra_packages_list = list(extra_packages)
+    print(f"Extra packages to include: {extra_packages_list}")
+
+    # Initialize vertexai client
+    client = vertexai.Client(
+        project=project,
+        location=location,
+    )
+    vertexai.init(project=project, location=location)
+
+    # Read requirements
+    with open(requirements_file) as f:
+        requirements = f.read().strip().split("\n")
+
+    agent_engine = AgentEngineApp(
+        agent=root_agent,
+        artifact_service_builder=lambda: GcsArtifactService(
+            bucket_name=artifacts_bucket_name
+        ),
+    )
+
+    # Set worker parallelism to 1
+    env_vars["NUM_WORKERS"] = "1"
+
+    # print("DEBUG: Environment variables being sent to Agent Engine:")
+    # for i, (key, value) in enumerate(env_vars.items()):
+    #     print(f"  {i}: {key}={value}")
+    # logging.info(f"Environment variables being sent to Agent Engine: {env_vars}")
+
+    # Common configuration for both create and update operations
+    labels: dict[str, str] = {}
+
+    config = AgentEngineConfig(
+        display_name=os.getenv("AGENT_NAME"),
+        description=os.getenv("AGENT_DESCRIPTION"),
+        extra_packages=extra_packages_list,
+        env_vars=env_vars,
+        service_account=service_account,
+        requirements=requirements,
+        staging_bucket=staging_bucket_uri,
+        labels=labels,
+        gcs_dir_name=agent_name.replace(" ", "_").lower()
+    )
+
+    agent_config = {
+        "agent": agent_engine,
+        "config": config,
+    }
+    logging.info(f"Agent config: {agent_config}")
+
+    # Check if an agent with this name already exists
+    existing_agents = list(client.agent_engines.list())
+    matching_agents = [
+        agent
+        for agent in existing_agents
+        if agent.api_resource.display_name == agent_name
+    ]
+
+    if matching_agents:
+        # Update the existing agent with new configuration
+        logging.info(f"\n📝 Updating existing agent: {agent_name}")
+        remote_agent = client.agent_engines.update(
+            name=matching_agents[0].api_resource.name, **agent_config
+        )
+    else:
+        # Create a new agent if none exists
+        logging.info(f"\n🚀 Creating new agent: {agent_name}")
+        remote_agent = client.agent_engines.create(**agent_config)
+
+    write_deployment_metadata(remote_agent)
+    print_deployment_success(remote_agent, location, project)
+
+    return remote_agent
+
+
+if __name__ == "__main__":
+    deploy_agent_engine_app()
+
+
+
+

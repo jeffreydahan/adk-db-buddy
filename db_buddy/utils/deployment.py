@@ -76,6 +76,9 @@ def write_deployment_metadata(
     else:
         lines.append(f'AGENT_ENGINE_APP_RESOURCE_ID="{remote_agent.api_resource.name}"\n')
 
+    with open(".env", "w") as f:
+        f.writelines(lines)
+
     logging.info(f"Updated .env file with AGENT_ENGINE_APP_RESOURCE_ID")
 
     # load environment with the .env file change
