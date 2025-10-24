@@ -1,10 +1,6 @@
 # ADK DB Buddy
 
-ADK DB Buddy is a chatbot agent that demonstrates how to connect to multiple data sources using the Google Agent Development Kit (ADK). This agent can interact with a Cloud SQL for PostgreSQL database, a Cloud SQL for SQL Server database (both using Application Integration connectors), and a Retrieval-Augmented Generation (RAG) engine.  Finally, this Agent can be run locally in a dev environment by running
-```
-adk web
-```
-or you can deploy the agent to Vertex AI Agent Engine and then into Google
+ADK DB Buddy is a chatbot agent that demonstrates how to connect to multiple data sources using the Google Agent Development Kit (ADK). This agent can interact with a Cloud SQL for PostgreSQL database, a Cloud SQL for SQL Server database (both using Application Integration connectors), and a Retrieval-Augmented Generation (RAG) engine.  Finally, this Agent can be run locally in a dev environment or you can deploy the agent to Vertex AI Agent Engine and then into Google
 Gemini Enterprise.
 
 This agent makes use of the following source data:
