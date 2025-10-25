@@ -64,9 +64,48 @@ python3 connector_deployment/rag_create.py
 # and test queries against the databases and RAG engine.
 
 # Optional deploy to Agent Engine
+# Provide Agent Engine principal access to invoke connectors
+# Get the Google Cloud Project Number
+PROJECT_NUMBER=$(gcloud projects describe ${GOOGLE_CLOUD_PROJECT_ID} --format='get(projectNumber)')
+# Build the service account principal using the Project Number service-[ProjectNumber]@gcp-sa-aiplatform-re.iam.gserviceaccount.com
+AGENT_ENGINE_ACCOUNT_PRINCIPAL="service-${PROJECT_NUMBER}@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
 
-python3 deploy_to_agent_engine.py
+# Grant the role of roles/integrations.integrationInvoker to the Agent Engine service account principal
+gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT_ID} \
+    --member="serviceAccount:${AGENT_ENGINE_ACCOUNT_PRINCIPAL}" \
+    --role="roles/integrations.integrationInvoker"
+
+# Grant the role of roles/cloudtrace.agent to the Agent Engine service account principal
+gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT_ID} \
+    --member="serviceAccount:${AGENT_ENGINE_ACCOUNT_PRINCIPAL}" \
+    --role="roles/cloudtrace.agent"
+
+# Grant the role of roles/connectors.viewer to the Agent Engine service account principal
+gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT_ID} \
+    --member="serviceAccount:${AGENT_ENGINE_ACCOUNT_PRINCIPAL}" \
+    --role="roles/connectors.viewer"
+
+# Grant the role of roles/aiplatform.reasoningEngineServiceAgent to the Agent Engine service account principal
+gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT_ID} \
+    --member="serviceAccount:${AGENT_ENGINE_ACCOUNT_PRINCIPAL}" \
+    --role="roles/aiplatform.reasoningEngineServiceAgent"
+
+# Grant the role of roles/aiplatform.user to the Agent Engine service account principal
+gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT_ID} \
+    --member="serviceAccount:${AGENT_ENGINE_ACCOUNT_PRINCIPAL}" \
+    --role="roles/aiplatform.user"
+
+# Deploy to Agent Engine
+python3 deploy_to_agent_engine.py --service-account="${AGENT_ENGINE_ACCOUNT_PRINCIPAL}"
 echo $AGENT_ENGINE_APP_RESOURCE_ID
+
+# Ensure correct permissions for Gemini Enterprise service account'
+GEMINI_ENTERPRISE_ACCOUNT_PRINCIPAL="service-${PROJECT_NUMBER}@gcp-sa-discoveryengine.iam.gserviceaccount.com"
+
+# Grant the role of roles/aiplatform.user to the Gemini Enterprise service account principal
+gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT_ID} \
+    --member="serviceAccount:${GEMINI_ENTERPRISE_ACCOUNT_PRINCIPAL}" \
+    --role="roles/aiplatform.user"
 
 # Deploy to Gemini Enterprise
 bash deploy_to_gemini_enterprise.sh
@@ -83,4 +122,3 @@ python remove_from_agent_engine.py
 
 # if session restarts, kill the terminal and open a new terminal.  Ensure that
 # you run gcloud auth login and gcloud auth application-default login again.
-

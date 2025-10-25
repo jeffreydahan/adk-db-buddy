@@ -1,6 +1,4 @@
 #!/bin/bash
-
-set -x
 source .env
 
 # Get GCP Access Token
@@ -31,11 +29,11 @@ PROJECT_NUMBER=$(gcloud projects describe "${PROJECT_ID}" --format='get(projectN
 echo "PROJECT_NUMBER: ${PROJECT_NUMBER}"
 
 # Build the service account principal using the Project Number service-[ProjectNumber]@gcp-sa-aiplatform-re.iam.gserviceaccount.com
-SERVICE_ACCOUNT_PRINCIPAL="service-${PROJECT_NUMBER}@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
+# SERVICE_ACCOUNT_PRINCIPAL="service-${PROJECT_NUMBER}@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
 # Grand the role of Application Integration Invoker to the service account principal
-gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-    --member="serviceAccount:${SERVICE_ACCOUNT_PRINCIPAL}" \
-    --role="roles/integrations.integrationInvoker"
+# gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+#     --member="serviceAccount:${SERVICE_ACCOUNT_PRINCIPAL}" \
+#     --role="roles/integrations.integrationInvoker"
 
 # Build API Endpoint - it must use the 'global' location hard coded
 API_ENDPOINT="https://discoveryengine.googleapis.com/v1alpha/projects/${PROJECT_ID}/locations/global/collections/${COLLECTION_ID}/engines/${ENGINE_ID}/assistants/${ASSISTANT_ID}/agents"
