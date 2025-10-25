@@ -98,6 +98,8 @@ In the following steps, you will see how to deploy certain parts of the infrastr
     * Click Use Template
       <img width="939" height="402" alt="image" src="https://github.com/user-attachments/assets/d66fd1cb-913b-4b16-aaa2-073002a33a73" />
     * Name the integration "ExecuteConnection" (must be exactly this name)  Do not make ANY configuration changes.  This integration is designed specifically for ADK and will handle all connectivity.
+    * Ensure you click 'Publish' to enable the connection
+      <img width="180" height="75" alt="image" src="https://github.com/user-attachments/assets/49c3ebb0-388a-49b0-a93f-6a0cf833117b" />
     * You are complete with the connectivity setup.  
 ### Deployment Commands
 
