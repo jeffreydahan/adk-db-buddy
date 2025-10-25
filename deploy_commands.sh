@@ -1,5 +1,14 @@
+# Pull in all env variables
+source .env
+
+# Authenticate gcloud
 gcloud auth login
 gcloud auth application-default login
+
+# Set default quota project
+gcloud auth application-default set-quota-project ${GOOGLE_CLOUD_PROJECT_ID}
+gcloud config set project ${GOOGLE_CLOUD_PROJECT_ID}
+
 
 # This script deploys the camera tool to Cloud Run using Secret Manager
 # and then deploys the main agent to Agent Engine.
@@ -7,26 +16,47 @@ gcloud auth application-default login
 # --- Preamble: Enable APIs and Load Environment ---
 gcloud services enable run.googleapis.com
 gcloud services enable storage.googleapis.com
-
-# Load environment variables from .env file in the project root
-cd ~/code/adk-db-buddy
-source .env
+gcloud services enable sqladmin.googleapis.com
+gcloud services enable aiplatform.googleapis.com
+gcloud services enable secretmanager.googleapis.com
+gcloud services enable connectors.googleapis.com
+gcloud services enable compute.googleapis.com
 
 # Deploy database infrastructure
 python3 connector_deployment/db_deploy.py postgres
+
+# Open another terminal to run the next command if desired in parallel
 python3 connector_deployment/db_deploy.py sqlsvr
 
+# Open another terminal to run the next command if desired in parallel
+# Create RAG engine
+python3 connector_deployment/rag_create.py
+
 # Populate databases
-INSTANCE_NAME=$(grep GOOGLE_CLOUD_POSTGRES_INSTANCE_NAME .env | cut -d '=' -f2)
+# These may fail to run remotely depending on the network setup of the
+# Cloud SQL instances.  If so, run the SQL commands from the 
+# Google Cloud Console SQL interface - via the Query Editor.
+# The specific commands are in the respective .sql files. under
+# connector_deployment/
+
+# Create Postgres user (privileges are granted in the populate script)
+gcloud sql users create $GOOGLE_CLOUD_POSTGRES_USER --password=$GOOGLE_CLOUD_POSTGRES_PASSWORD --instance=$GOOGLE_CLOUD_POSTGRES_INSTANCE 
+
+# Populate Postgres database
+INSTANCE_NAME=$(grep GOOGLE_CLOUD_POSTGRES_INSTANCE .env | cut -d '=' -f2)
 DB_NAME=$(grep GOOGLE_CLOUD_POSTGRES_DB .env | cut -d '=' -f2)
 gcloud sql connect $INSTANCE_NAME --database=$DB_NAME < connector_deployment/db_postgres_populate.sql
 
-INSTANCE_NAME=$(grep GOOGLE_CLOUD_SQLSVR_INSTANCE_NAME .env | cut -d '=' -f2)
+# Populate SQL Server database
+INSTANCE_NAME=$(grep GOOGLE_CLOUD_SQLSVR_INSTANCE .env | cut -d '=' -f2)
 DB_NAME=$(grep GOOGLE_CLOUD_SQLSVR_DB .env | cut -d '=' -f2)
-gcloud sql connect $INSTANCE_NAME --database=$DB_NAME --user=sqlserver < connector_deployment/db_sqlsvr_populate.sql
+gcloud sql connect $GOOGLE_CLOUD_SQLSVR_INSTANCE --database=$DGOOGLE_CLOUD_SQLSVR_DB --user=sqlserver < connector_deployment/db_sqlsvr_populate.sql
 
 # Create RAG engine
 python3 connector_deployment/rag_create.py
+
+# Ensure you follow the readme.md to deploy the connectors
+# from the Google Cloud Console
 
 # At this point, you can try to run the agent locally using:
 # adk web
@@ -34,7 +64,7 @@ python3 connector_deployment/rag_create.py
 # and test queries against the databases and RAG engine.
 
 # Optional deploy to Agent Engine
-source .env
+
 python3 deploy_to_agent_engine.py
 echo $AGENT_ENGINE_APP_RESOURCE_ID
 

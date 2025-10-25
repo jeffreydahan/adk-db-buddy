@@ -295,7 +295,7 @@ def main():
     
     db_type_upper=db_type.upper()
     db_version=os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_VERSION")
-    db_instance_name = os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_INSTANCE_NAME")
+    db_instance_name = os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_INSTANCE")
     db_name = os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_DB")
     db_region = os.getenv(f"GOOGLE_CLOUD_{db_type_upper}_REGION") 
     
@@ -304,7 +304,7 @@ def main():
     print(f"GOOGLE_CLOUD_STORAGE_BUCKET_DOCS: {gcs_bucket_name}")
     print(f"GOOGLE_CLOUD_STORAGE_REGION: {gcs_location}")
     print(f"GOOGLE_CLOUD_{db_type_upper}_VERSION: {db_version}")
-    print(f"GOOGLE_CLOUD_{db_type_upper}_INSTANCE_NAME: {db_instance_name}")
+    print(f"GOOGLE_CLOUD_{db_type_upper}_INSTANCE: {db_instance_name}")
     print(f"GOOGLE_CLOUD_{db_type_upper}_DB: {db_name}")
     print(f"GOOGLE_CLOUD_{db_type_upper}_REGION: {db_region}")
     

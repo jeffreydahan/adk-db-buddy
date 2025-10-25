@@ -30,7 +30,6 @@ def main():
         "RAG_SOURCE_FOLDER": rag_source_folder,
         "RAG_SOURCE_BUCKET": rag_source_bucket,
         "RAG_SOURCE_BUCKET_FOLDER": rag_source_bucket_folder,
-        "RAG_IMPORT_RESULTS_BUCKET_FOLDER": rag_import_results_bucket_folder
     }
     missing_vars = [key for key, value in required_env_vars.items() if not value]
     if missing_vars:

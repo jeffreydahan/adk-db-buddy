@@ -17,8 +17,6 @@ GOOGLE_CLOUD_POSTGRES_DB="" # The name of the Postgres database
 GOOGLE_CLOUD_POSTGRES_TABLE="" # The name of the table within the Postgres database
 GOOGLE_CLOUD_POSTGRES_REGION="" # The region for the Cloud SQL Postgres instance, e.g., us-central1
 GOOGLE_CLOUD_POSTGRES_DB_SEED_DATA="" # The CSV file name for seeding the Postgres database
-GOOGLE_CLOUD_POSTGRES_PROXY_SCRIPT="" # The script to start the Cloud SQL Auth Proxy for Postgres
-GOOGLE_CLOUD_POSTGRES_PATH="" # The path to the Cloud SQL Auth Proxy for Postgres"
 
 # Google Cloud SQL - SQL Server
 GOOGLE_CLOUD_SQLSVR_INSTANCE_NAME="" # The name of your Cloud SQL SQL Server instance
