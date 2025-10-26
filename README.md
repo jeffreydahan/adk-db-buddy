@@ -30,7 +30,7 @@ and Agents.  Click [here](https://cloud.google.com/gemini-enterprise) for more i
 
 
 ## Architecture
-<img width="2184" height="1340" alt="image" src="https://github.com/user-attachments/assets/878bffe4-4d44-4d03-8ff3-0f4e66164b7f" />
+<img width="1254" height="780" alt="image" src="https://github.com/user-attachments/assets/747463a9-b9e7-4fbe-a537-38fb3cd69095" />
 
 DB Buddy is built on the following key technologies:
 
