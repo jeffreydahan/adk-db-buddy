@@ -13,6 +13,7 @@ REASONING_ENGINE_ID="${AGENT_ENGINE_APP_RESOURCE_ID}"
 AGENT_NAME="${AGENT_NAME}"
 AGENT_DESCRIPTION="${AGENT_DESCRIPTION}"
 TOOL_DESCRIPTION="${AGENT_TOOL_DESCRIPTION}"
+AGENT_ICON_URI="${AGENT_ICON_URI}"
 
 # Print the above variables returned from .env file
 echo "PROJECT_ID: ${PROJECT_ID}"
@@ -23,6 +24,7 @@ echo "REASONING_ENGINE_ID: ${REASONING_ENGINE_ID}"
 echo "AGENT_NAME: ${AGENT_NAME}"
 echo "AGENT_DESCRIPTION: ${AGENT_DESCRIPTION}"
 echo "TOOL_DESCRIPTION: ${TOOL_DESCRIPTION}"
+echo "AGENT_ICON_URI: ${AGENT_ICON_URI}"
 
 # Get the Project Number from the Project ID
 PROJECT_NUMBER=$(gcloud projects describe "${PROJECT_ID}" --format='get(projectNumber)')
@@ -38,22 +40,31 @@ echo "PROJECT_NUMBER: ${PROJECT_NUMBER}"
 # Build API Endpoint - it must use the 'global' location hard coded
 API_ENDPOINT="https://discoveryengine.googleapis.com/v1alpha/projects/${PROJECT_ID}/locations/global/collections/${COLLECTION_ID}/engines/${ENGINE_ID}/assistants/${ASSISTANT_ID}/agents"
 
-# JSON Payload to create the Agent Object inside Agentspace
-JSON_PAYLOAD=$(cat <<EOF
-{
-    "displayName": "${AGENT_NAME}",
-    "description": "${AGENT_DESCRIPTION}",
-    "adk_agent_definition": {
-        "tool_settings": {
-            "tool_description": "${TOOL_DESCRIPTION}"
+# Conditionally build the JSON payload
+JSON_PAYLOAD="{
+    \"displayName\": \"${AGENT_NAME}\",
+    \"description\": \"${AGENT_DESCRIPTION}\",
+    \"adk_agent_definition\": {
+        \"tool_settings\": {
+            \"tool_description\": \"${TOOL_DESCRIPTION}\"
         },
-        "provisioned_reasoning_engine": {
-            "reasoning_engine": "${REASONING_ENGINE_ID}"
+        \"provisioned_reasoning_engine\": {
+            \"reasoning_engine\": \"${REASONING_ENGINE_ID}\"
         }
     }
-}
-EOF
-)
+}"
+
+# If AGENT_ICON_URI is set and not "NONE", add it to the payload
+if [ -n "${AGENT_ICON_URI}" ] && [ "${AGENT_ICON_URI}" != "NONE" ]; then
+    ICON_JSON="\"avatar\": { \"uri\": \"${AGENT_ICON_URI}\" },"
+    # Insert the avatar JSON after the description line
+    JSON_PAYLOAD=$(echo "${JSON_PAYLOAD}" | sed "s/\"description\": \"${AGENT_DESCRIPTION}\",/\"description\": \"${AGENT_DESCRIPTION}\",\n  ${ICON_JSON}/")
+fi
+
+echo "---"
+echo "Using the following JSON payload:"
+echo "${JSON_PAYLOAD}" | jq .
+echo "---"
 
 # Execute
 curl -X POST \
