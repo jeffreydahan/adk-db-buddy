@@ -40,30 +40,31 @@ echo "PROJECT_NUMBER: ${PROJECT_NUMBER}"
 # Build API Endpoint - it must use the 'global' location hard coded
 API_ENDPOINT="https://discoveryengine.googleapis.com/v1alpha/projects/${PROJECT_ID}/locations/global/collections/${COLLECTION_ID}/engines/${ENGINE_ID}/assistants/${ASSISTANT_ID}/agents"
 
-# Conditionally build the JSON payload
-JSON_PAYLOAD="{
-    \"displayName\": \"${AGENT_NAME}\",
-    \"description\": \"${AGENT_DESCRIPTION}\",
-    \"adk_agent_definition\": {
-        \"tool_settings\": {
-            \"tool_description\": \"${TOOL_DESCRIPTION}\"
+# Build the JSON payload using a heredoc for better readability and safety
+read -r -d '' JSON_PAYLOAD <<EOF
+{
+    "displayName": "${AGENT_NAME}",
+    "description": "${AGENT_DESCRIPTION}",
+    "adkAgentDefinition": {
+        "toolSettings": {
+            "toolDescription": "${TOOL_DESCRIPTION}"
         },
-        \"provisioned_reasoning_engine\": {
-            \"reasoning_engine\": \"${REASONING_ENGINE_ID}\"
+        "provisionedReasoningEngine": {
+            "reasoningEngine": "${REASONING_ENGINE_ID}"
         }
     }
-}"
+}
+EOF
 
-# If AGENT_ICON_URI is set and not "NONE", add it to the payload
+# If AGENT_ICON_URI is set and not "NONE", add the icon object to the payload
 if [ -n "${AGENT_ICON_URI}" ] && [ "${AGENT_ICON_URI}" != "NONE" ]; then
-    ICON_JSON="\"avatar\": { \"uri\": \"${AGENT_ICON_URI}\" },"
-    # Insert the avatar JSON after the description line
-    JSON_PAYLOAD=$(echo "${JSON_PAYLOAD}" | sed "s/\"description\": \"${AGENT_DESCRIPTION}\",/\"description\": \"${AGENT_DESCRIPTION}\",\n  ${ICON_JSON}/")
+    # Use jq to safely add the icon object to the JSON
+    JSON_PAYLOAD=$(echo "${JSON_PAYLOAD}" | jq --arg uri "${AGENT_ICON_URI}" '. + {icon: {uri: $uri}}')
 fi
 
 echo "---"
 echo "Using the following JSON payload:"
-echo "${JSON_PAYLOAD}" | jq .
+echo "${JSON_PAYLOAD}"
 echo "---"
 
 # Execute
