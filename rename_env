@@ -58,4 +58,4 @@ AGENT_TOOL_DESCRIPTION="" # e.g., This tool allows the agent to interact with Cl
 AGENT_ENGINE_APP_RESOURCE_ID="" # e.g., projects/732115074534/locations/us-central1/reasoningEngines/2493239373005324288
 AGENT_EXTRA_PACKAGES="" # e.g., ./db_buddy 
 AGENT_REQUIREMENTS_FILE_NAME="" # e.g., requirements.txt
-AGENT_ICON_URI="NONE" # Optional png icon location ex: "https://raw.githubusercontent.com/jeffdahan/adk-db-buddy/icons/db_buddy_icon.png"
+AGENT_ICON_URI="NONE" # Optional png icon location ex: "https://raw.githubusercontent.com/jeffreydahan/adk-db-buddy/main/db_buddy/icons/db_buddy_icon.png"
